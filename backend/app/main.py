@@ -56,6 +56,7 @@ app.include_router(predict.router)  # Handles /predict and /api/v1/predict with 
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["Projects"])
 app.include_router(upload.router, prefix="/api/v1/projects", tags=["Upload"])
 app.include_router(pipeline.router, prefix="/api/v1", tags=["Pipeline & Jobs"])
+app.include_router(pipeline.router, tags=["Pipeline & Jobs Direct"])
 
 OUTPUT_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "outputs"))
 

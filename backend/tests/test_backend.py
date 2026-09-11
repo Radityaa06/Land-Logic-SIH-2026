@@ -221,6 +221,34 @@ class TestBackendModule(unittest.TestCase):
         next_res = self.client.post("/predict", headers=self.auth_headers)
         self.assertEqual(next_res.status_code, 200)
 
+    # Priority 3 Verification: SSE client receives real-time stage transition events
+    def test_sse_progress_streaming_receives_events(self):
+        import httpx
+        import json
+
+        proj_id = "test_sse_live_run"
+
+        async def run_sse_test():
+            events_received = []
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                # 1. Trigger predict
+                pred_res = await client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+                self.assertEqual(pred_res.status_code, 200)
+
+                # 2. Connect to SSE events endpoint
+                async with client.stream("GET", f"/api/v1/projects/{proj_id}/events", headers=self.auth_headers) as stream:
+                    async for line in stream.aiter_lines():
+                        if line.startswith("data: "):
+                            ev = json.loads(line[6:])
+                            events_received.append(ev)
+
+            stages = [e["stage"] for e in events_received]
+            self.assertGreaterEqual(len(events_received), 1)
+            self.assertIn("stitching", stages)
+            self.assertIn("complete", stages)
+
+        asyncio.run(run_sse_test())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,13 +4,62 @@ Member 2: Backend & Pipeline Orchestrator
 Workspace: backend/
 Branch: feature/fastapi-backend
 
-Coordinates asynchronous execution of Member 4 (OpenCV), Member 3 (AI), and Member 5 (GIS).
+Coordinates asynchronous execution of Member 4 (OpenCV), Member 3 (AI), and Member 5 (GIS),
+and manages real-time stage-transition event pub-sub for SSE streaming.
 """
 
 import os
+import json
 import asyncio
 from datetime import datetime
-from app.services.pipeline import execute_pipeline
+from typing import Dict, List, Any
+
+# In-memory store of stage transition events per project
+PROJECT_EVENTS: Dict[str, List[Dict[str, Any]]] = {}
+PROJECT_LISTENERS: Dict[str, List[asyncio.Queue]] = {}
+
+
+def emit_stage_event(project_id: str, stage: str, status: str, message: str) -> Dict[str, Any]:
+    """
+    Emits a structured stage-transition event to historical log and live SSE subscribers.
+    Payload contains: stage, status (started/done/error), and human-readable message.
+    """
+    event = {
+        "project_id": project_id,
+        "stage": stage,
+        "status": status,
+        "message": message,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    if project_id not in PROJECT_EVENTS:
+        PROJECT_EVENTS[project_id] = []
+    PROJECT_EVENTS[project_id].append(event)
+
+    # Dispatch to all active SSE queues for this project
+    queues = PROJECT_LISTENERS.get(project_id, [])
+    for q in queues:
+        try:
+            q.put_nowait(event)
+        except Exception:
+            pass
+
+    return event
+
+
+def subscribe_project_events(project_id: str) -> asyncio.Queue:
+    """Registers an SSE listener queue for real-time stage transitions."""
+    q = asyncio.Queue()
+    if project_id not in PROJECT_LISTENERS:
+        PROJECT_LISTENERS[project_id] = []
+    PROJECT_LISTENERS[project_id].append(q)
+    return q
+
+
+def unsubscribe_project_events(project_id: str, q: asyncio.Queue) -> None:
+    """Unregisters an SSE listener queue upon client disconnect."""
+    if project_id in PROJECT_LISTENERS and q in PROJECT_LISTENERS[project_id]:
+        PROJECT_LISTENERS[project_id].remove(q)
+
 
 UPLOAD_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
 OUTPUT_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "outputs"))
@@ -18,19 +67,20 @@ OUTPUT_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", 
 
 async def run_full_pipeline(project_id: str, job_id: str, jobs_db: dict):
     """
-    Executes the multi-stage pipeline:
+    Executes the multi-stage pipeline as an async background task:
     1. OpenCV Orthomosaic Stitching (Member 4)
     2. AI Semantic Land & Crop Health Segmentation (Member 3)
     3. GIS Georeferencing & Vector GeoJSON Generation (Member 5)
     """
+    from app.services.pipeline import execute_pipeline
+
     try:
-        # Update stage to OpenCV
         jobs_db[job_id]["stage"] = "OPENCV_STITCHING"
         jobs_db[job_id]["status"] = "PROCESSING"
         jobs_db[job_id]["progress_pct"] = 25.0
         jobs_db[job_id]["message"] = "OpenCV: Extracting SIFT keypoints & computing homography matrices"
         jobs_db[job_id]["updated_at"] = datetime.utcnow()
-        await asyncio.sleep(0.5)
+        emit_stage_event(project_id, "stitching", "started", "OpenCV: Extracting SIFT keypoints & computing homography matrices")
 
         # Gather images for project
         project_dir = os.path.join(UPLOAD_BASE_DIR, project_id)
@@ -44,15 +94,14 @@ async def run_full_pipeline(project_id: str, job_id: str, jobs_db: dict):
         jobs_db[job_id]["progress_pct"] = 60.0
         jobs_db[job_id]["message"] = "AI Engine: Running 512x512 tile inference & VARI spectral analysis"
         jobs_db[job_id]["updated_at"] = datetime.utcnow()
-        await asyncio.sleep(0.5)
 
         jobs_db[job_id]["stage"] = "GIS_GEOREFERENCING"
         jobs_db[job_id]["progress_pct"] = 85.0
         jobs_db[job_id]["message"] = "GIS: Georeferencing telemetry & generating RFC 7946 GeoJSON parcels"
         jobs_db[job_id]["updated_at"] = datetime.utcnow()
 
-        # Execute real pipeline logic
-        result = execute_pipeline(project_id, image_paths, OUTPUT_BASE_DIR)
+        # Execute blocking pipeline in worker thread to prevent event loop starvation
+        result = await asyncio.to_thread(execute_pipeline, project_id, image_paths, OUTPUT_BASE_DIR)
 
         # Finalize
         jobs_db[job_id]["stage"] = "COMPLETE"
@@ -66,3 +115,4 @@ async def run_full_pipeline(project_id: str, job_id: str, jobs_db: dict):
         jobs_db[job_id]["status"] = "FAILED"
         jobs_db[job_id]["message"] = f"Pipeline execution failed: {str(exc)}"
         jobs_db[job_id]["updated_at"] = datetime.utcnow()
+        emit_stage_event(project_id, "complete", "error", f"Pipeline execution failed: {str(exc)}")
