@@ -149,6 +149,50 @@ class TestBackendModule(unittest.TestCase):
         if os.path.exists(outputs_dir):
             os.rmdir(outputs_dir)
 
+    # Priority 1 Verification: slow pipeline does not block /health from responding
+    def test_slow_pipeline_does_not_block_health(self):
+        import time
+        from unittest.mock import patch
+        import httpx
+
+        def slow_execute(*args, **kwargs):
+            time.sleep(0.3)
+            return {
+                "status": "success",
+                "message": "done",
+                "project_id": "test_slow",
+                "coordinate_space": "pixel",
+                "summary": {"image_count": 0, "mean_vari": 0.0, "detected_parcels": 0, "classes_detected": []},
+                "geojson": {"type": "FeatureCollection", "features": []},
+                "artifacts": {}
+            }
+
+        async def run_concurrent():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                health_completed_before_predict = False
+
+                async def trigger_predict():
+                    nonlocal health_completed_before_predict
+                    return await client.post("/predict", headers=self.auth_headers)
+
+                async def trigger_health():
+                    nonlocal health_completed_before_predict
+                    await asyncio.sleep(0.05)
+                    h_res = await client.get("/health")
+                    health_completed_before_predict = True
+                    return h_res
+
+                with patch("app.routes.predict.execute_pipeline", side_effect=slow_execute):
+                    pred_task = asyncio.create_task(trigger_predict())
+                    health_task = asyncio.create_task(trigger_health())
+                    h_res, p_res = await asyncio.gather(health_task, pred_task)
+
+                    self.assertEqual(h_res.status_code, 200)
+                    self.assertEqual(p_res.status_code, 200)
+                    self.assertTrue(health_completed_before_predict, "Health check must respond while pipeline is running")
+
+        asyncio.run(run_concurrent())
+
 
 if __name__ == "__main__":
     unittest.main()

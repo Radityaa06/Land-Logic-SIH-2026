@@ -10,6 +10,7 @@ Frontend -> POST /predict -> Backend -> OpenCV -> AI -> GIS -> Backend -> Fronte
 
 import os
 import uuid
+import asyncio
 from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
@@ -127,7 +128,8 @@ async def predict(
     # 3. Concurrency guard: cap concurrent in-flight pipeline runs to prevent worker exhaustion
     async with pipeline_concurrency_guard:
         try:
-            res = execute_pipeline(proj_id, saved_paths, OUTPUT_BASE_DIR)
+            # Run blocking CPU pipeline in worker thread to keep the FastAPI event loop responsive
+            res = await asyncio.to_thread(execute_pipeline, proj_id, saved_paths, OUTPUT_BASE_DIR)
         except PipelineStageError as e:
             raise HTTPException(
                 status_code=500,
