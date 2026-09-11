@@ -62,3 +62,12 @@ python3 -m unittest backend/tests/test_backend.py
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 Interactive Swagger docs available at: `http://localhost:8000/docs`
+
+---
+
+## ⚙️ Environment Configuration
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `ALLOWED_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated list of allowed origins. Before deploying to production (e.g. Render), add your deployed frontend URL (e.g. `https://your-app.onrender.com`) to `ALLOWED_ORIGINS`. |
+
