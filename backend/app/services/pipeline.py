@@ -11,6 +11,7 @@ Does NOT perform AI, OpenCV, or GIS math internally; acts purely as the coordina
 
 import os
 import sys
+import time
 import uuid
 from typing import Dict, Any, List
 
@@ -24,9 +25,9 @@ from ai.inference import run_inference
 from gis.exif import extract_gps_coordinates
 from gis.gsd import calculate_gsd
 from gis.geojson import generate_parcels_geojson
-
-
 from app.services.errors import PipelineStageError
+from app.utils.logger import logger, log_request
+
 
 def execute_pipeline(
     project_id: str,
@@ -40,6 +41,7 @@ def execute_pipeline(
     3. AI: Runs segmentation & VARI spectral vegetation index
     4. GIS: Formats parcels into RFC 7946 GeoJSON with coordinate_space
     """
+    request_id = str(uuid.uuid4())
     project_output_dir = os.path.join(outputs_base_dir, project_id)
     os.makedirs(project_output_dir, exist_ok=True)
 
@@ -47,15 +49,21 @@ def execute_pipeline(
     geojson_out_path = os.path.join(project_output_dir, "parcels.geojson")
 
     # Step 1: Member 4 — OpenCV Orthomosaic Stitching
-    print(f"⚙️ [Backend Orchestrator] Invoking Member 4 (OpenCV) on {len(image_paths)} images...")
+    logger.info(f"Invoking Member 4 (OpenCV) on {len(image_paths)} images...")
+    t0 = time.perf_counter()
     try:
         stitcher = DroneStitcher()
         stitcher.stitch_image_list(image_paths, stitched_img_path)
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log_request(request_id, "stitching", duration_ms, "success")
     except Exception as e:
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log_request(request_id, "stitching", duration_ms, "failure")
         raise PipelineStageError("stitching", str(e))
 
     # Step 2: Member 5 — GIS EXIF Extraction
-    print("⚙️ [Backend Orchestrator] Invoking Member 5 (GIS) for EXIF telemetry...")
+    logger.info("Invoking Member 5 (GIS) for EXIF telemetry...")
+    t0 = time.perf_counter()
     try:
         gps_meta = {"has_gps": False, "coordinate_space": "pixel"}
         for p in image_paths:
@@ -63,18 +71,28 @@ def execute_pipeline(
             if meta.get("has_gps"):
                 gps_meta = meta
                 break
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log_request(request_id, "GPS extraction", duration_ms, "success")
     except Exception as e:
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log_request(request_id, "GPS extraction", duration_ms, "failure")
         raise PipelineStageError("GPS extraction", str(e))
 
     # Step 3: Member 3 — AI Inference & Spectral Analysis
-    print("⚙️ [Backend Orchestrator] Invoking Member 3 (AI) on stitched composite...")
+    logger.info("Invoking Member 3 (AI) on stitched composite...")
+    t0 = time.perf_counter()
     try:
         ai_results = run_inference(stitched_img_path, project_output_dir)
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log_request(request_id, "inference", duration_ms, "success")
     except Exception as e:
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log_request(request_id, "inference", duration_ms, "failure")
         raise PipelineStageError("inference", str(e))
 
     # Step 4: Member 5 — GIS GeoJSON Polygon Generation
-    print("⚙️ [Backend Orchestrator] Invoking Member 5 (GIS) to generate GeoJSON...")
+    logger.info("Invoking Member 5 (GIS) to generate GeoJSON...")
+    t0 = time.perf_counter()
     try:
         geo_reference = None
         if gps_meta.get("has_gps") and gps_meta.get("coordinate_space") == "geographic":
@@ -92,7 +110,11 @@ def execute_pipeline(
             output_path=geojson_out_path,
             geo_reference=geo_reference
         )
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log_request(request_id, "GeoJSON generation", duration_ms, "success")
     except Exception as e:
+        duration_ms = (time.perf_counter() - t0) * 1000.0
+        log_request(request_id, "GeoJSON generation", duration_ms, "failure")
         raise PipelineStageError("GeoJSON generation", str(e))
 
     detected_classes = list({p["class"] for p in ai_results.get("predictions", [])})
