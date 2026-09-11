@@ -149,6 +149,158 @@ class TestBackendModule(unittest.TestCase):
         if os.path.exists(outputs_dir):
             os.rmdir(outputs_dir)
 
+    # Priority 1 Verification: slow pipeline does not block /health from responding
+    def test_slow_pipeline_does_not_block_health(self):
+        import time
+        from unittest.mock import patch
+        import httpx
+
+        def slow_execute(*args, **kwargs):
+            time.sleep(0.3)
+            return {
+                "status": "success",
+                "message": "done",
+                "project_id": "test_slow",
+                "coordinate_space": "pixel",
+                "summary": {"image_count": 0, "mean_vari": 0.0, "detected_parcels": 0, "classes_detected": []},
+                "geojson": {"type": "FeatureCollection", "features": []},
+                "artifacts": {}
+            }
+
+        async def run_concurrent():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                health_completed_before_predict = False
+
+                async def trigger_predict():
+                    nonlocal health_completed_before_predict
+                    return await client.post("/predict", headers=self.auth_headers)
+
+                async def trigger_health():
+                    nonlocal health_completed_before_predict
+                    await asyncio.sleep(0.05)
+                    h_res = await client.get("/health")
+                    health_completed_before_predict = True
+                    return h_res
+
+                with patch("app.routes.predict.execute_pipeline", side_effect=slow_execute):
+                    pred_task = asyncio.create_task(trigger_predict())
+                    health_task = asyncio.create_task(trigger_health())
+                    h_res, p_res = await asyncio.gather(health_task, pred_task)
+
+                    self.assertEqual(h_res.status_code, 200)
+                    self.assertEqual(p_res.status_code, 200)
+                    self.assertTrue(health_completed_before_predict, "Health check must respond while pipeline is running")
+
+        asyncio.run(run_concurrent())
+
+    # Priority 2 Verification: hung pipeline times out with 504 and releases semaphore slot
+    def test_hung_pipeline_times_out_with_504_and_releases_slot(self):
+        import time
+        from unittest.mock import patch
+        import app.routes.predict as predict_module
+
+        def hang_execute(*args, **kwargs):
+            time.sleep(0.3)
+            return {}
+
+        original_timeout = predict_module.PIPELINE_TIMEOUT_SECONDS
+        predict_module.PIPELINE_TIMEOUT_SECONDS = 0.05
+
+        try:
+            with patch("app.routes.predict.execute_pipeline", side_effect=hang_execute):
+                response = self.client.post("/predict", headers=self.auth_headers)
+                self.assertEqual(response.status_code, 504)
+                self.assertIn("Pipeline exceeded", response.json()["detail"])
+                self.assertIn("try a smaller image set", response.json()["detail"])
+
+            # Concurrency slot must be immediately available for the next request
+            self.assertEqual(pipeline_concurrency_guard._active_count, 0)
+        finally:
+            predict_module.PIPELINE_TIMEOUT_SECONDS = original_timeout
+
+        next_res = self.client.post("/predict", headers=self.auth_headers)
+        self.assertEqual(next_res.status_code, 200)
+
+    # Priority 3 Verification: SSE client receives real-time stage transition events
+    def test_sse_progress_streaming_receives_events(self):
+        import httpx
+        import json
+
+        proj_id = "test_sse_live_run"
+
+        async def run_sse_test():
+            events_received = []
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                # 1. Trigger predict
+                pred_res = await client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+                self.assertEqual(pred_res.status_code, 200)
+
+                # 2. Connect to SSE events endpoint
+                async with client.stream("GET", f"/api/v1/projects/{proj_id}/events", headers=self.auth_headers) as stream:
+                    async for line in stream.aiter_lines():
+                        if line.startswith("data: "):
+                            ev = json.loads(line[6:])
+                            events_received.append(ev)
+
+            stages = [e["stage"] for e in events_received]
+            self.assertGreaterEqual(len(events_received), 1)
+            self.assertIn("stitching", stages)
+            self.assertIn("complete", stages)
+
+        asyncio.run(run_sse_test())
+
+    # Priority 4 Verification: File count cap (>60 images) returns 422
+    def test_predict_exceeds_max_image_count_returns_422(self):
+        files = [
+            ("files", (f"drone_frame_{i:03d}.png", io.BytesIO(b"fake_content"), "image/png"))
+            for i in range(61)
+        ]
+        response = self.client.post("/predict", files=files, headers=self.auth_headers)
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("exceeds maximum limit of 60 images", response.json()["detail"])
+
+    # Priority 4 Verification: Correlation/request ID returned in response and logged
+    def test_predict_correlation_id_returned(self):
+        valid_png = _make_valid_png_bytes(10, 10)
+        files = [("files", ("valid_drone_corr.png", io.BytesIO(valid_png), "image/png"))]
+        response = self.client.post("/predict", files=files, headers=self.auth_headers)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("correlation_id", data)
+        self.assertIsNotNone(data["correlation_id"])
+        self.assertEqual(len(data["correlation_id"]), 36)  # Standard UUID4 string length
+
+    # Priority 4 Verification: verify_api_key dependency directly raises 401
+    def test_dependencies_verify_api_key_direct(self):
+        from app.dependencies import verify_api_key as dep_verify_api_key
+        from fastapi import HTTPException
+
+        # 1. Unset API_KEY on server fails closed with 401
+        del os.environ["API_KEY"]
+        with self.assertRaises(HTTPException) as cm:
+            asyncio.run(dep_verify_api_key("any_key"))
+        self.assertEqual(cm.exception.status_code, 401)
+        self.assertIn("no API_KEY configured on server", cm.exception.detail)
+
+        # 2. Re-set server API_KEY
+        os.environ["API_KEY"] = self.api_key
+
+        # 3. Missing key raises 401
+        with self.assertRaises(HTTPException) as cm:
+            asyncio.run(dep_verify_api_key(None))
+        self.assertEqual(cm.exception.status_code, 401)
+        self.assertIn("Invalid or missing API key", cm.exception.detail)
+
+        # 4. Wrong key raises 401
+        with self.assertRaises(HTTPException) as cm:
+            asyncio.run(dep_verify_api_key("incorrect_key"))
+        self.assertEqual(cm.exception.status_code, 401)
+        self.assertIn("Invalid or missing API key", cm.exception.detail)
+
+        # 5. Valid key returns key string
+        res = asyncio.run(dep_verify_api_key(self.api_key))
+        self.assertEqual(res, self.api_key)
+
 
 if __name__ == "__main__":
     unittest.main()

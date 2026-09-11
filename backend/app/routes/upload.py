@@ -18,6 +18,8 @@ router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 UPLOAD_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
 MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024  # 15MB
+# 60 images cap prevents unbounded OpenCV feature matching and RAM exhaustion on single-worker deployments
+MAX_IMAGE_COUNT = int(os.getenv("MAX_IMAGE_COUNT", "60"))
 
 
 @router.post("/{project_id}/upload")
@@ -26,6 +28,12 @@ async def upload_drone_images(project_id: str, files: List[UploadFile] = File(..
     Saves incoming drone frames and performs telemetry check.
     Enforces format, size, safe decode, and API key validation.
     """
+    if len(files) > MAX_IMAGE_COUNT:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Batch image count ({len(files)}) exceeds maximum limit of {MAX_IMAGE_COUNT} images"
+        )
+
     project_dir = os.path.join(UPLOAD_BASE_DIR, project_id)
     os.makedirs(project_dir, exist_ok=True)
 

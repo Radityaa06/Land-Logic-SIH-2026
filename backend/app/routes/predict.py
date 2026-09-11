@@ -10,6 +10,7 @@ Frontend -> POST /predict -> Backend -> OpenCV -> AI -> GIS -> Backend -> Fronte
 
 import os
 import uuid
+import asyncio
 from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
@@ -19,6 +20,7 @@ from app.models.schemas import PredictResponse
 from app.services.pipeline import execute_pipeline
 from app.services.errors import PipelineStageError
 from app.dependencies import verify_api_key, pipeline_concurrency_guard
+from app.utils.logger import logger
 
 router = APIRouter()
 
@@ -28,6 +30,10 @@ OUTPUT_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".dng"}
 # 15MB limit per image prevents excessive memory consumption on single-worker deployments
 MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024  # 15MB
+# 60 images cap prevents unbounded OpenCV feature matching and RAM exhaustion on single-worker deployments
+MAX_IMAGE_COUNT = int(os.getenv("MAX_IMAGE_COUNT", "60"))
+# 90s timeout provides headroom for multi-image SIFT stitching and sliding-window tile inference while preventing hung jobs from locking concurrency slots indefinitely
+PIPELINE_TIMEOUT_SECONDS = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "90"))
 
 
 @router.post(
@@ -51,7 +57,23 @@ async def predict(
     Receives drone images -> OpenCV (Stitching) -> AI (Land/Crop Analysis) -> GIS (GeoJSON / Telemetry)
     Returns structured results with explicit coordinate_space ('geographic' or 'pixel').
     """
-    # 1. Validate all files before writing anything to disk (extension & size)
+    correlation_id = str(uuid.uuid4())
+    logger.info(
+        f"[request_id={correlation_id}] /predict request received "
+        f"(project_id={project_id or 'new'}, file_count={len(files) if files else 0})"
+    )
+
+    # 1. Validate file count cap before disk writes to prevent resource exhaustion
+    if files and len(files) > MAX_IMAGE_COUNT:
+        logger.warning(
+            f"[request_id={correlation_id}] Rejected: batch of {len(files)} files exceeds limit of {MAX_IMAGE_COUNT}"
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=f"Batch image count ({len(files)}) exceeds maximum limit of {MAX_IMAGE_COUNT} images"
+        )
+
+    # 2. Validate all files before writing anything to disk (extension & size)
     if files:
         for file in files:
             ext = os.path.splitext(file.filename or "")[1].lower()
@@ -99,7 +121,7 @@ async def predict(
                 if f.lower().endswith(tuple(ALLOWED_EXTENSIONS)):
                     saved_paths.append(os.path.join(project_dir, f))
 
-    # 2. Safe image decode validation: attempt to actually decode each saved file
+    # 3. Safe image decode validation: attempt to actually decode each saved file
     for file_path in saved_paths:
         filename = os.path.basename(file_path)
         try:
@@ -124,11 +146,26 @@ async def predict(
                 detail=f"File '{filename}' is not a valid, decodable image"
             )
 
-    # 3. Concurrency guard: cap concurrent in-flight pipeline runs to prevent worker exhaustion
+    # 4. Concurrency guard: cap concurrent in-flight pipeline runs to prevent worker exhaustion
     async with pipeline_concurrency_guard:
         try:
-            res = execute_pipeline(proj_id, saved_paths, OUTPUT_BASE_DIR)
+            # Run blocking CPU pipeline in worker thread with timeout protection
+            res = await asyncio.wait_for(
+                asyncio.to_thread(execute_pipeline, proj_id, saved_paths, OUTPUT_BASE_DIR),
+                timeout=PIPELINE_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"[request_id={correlation_id}] Pipeline exceeded {PIPELINE_TIMEOUT_SECONDS}s timeout"
+            )
+            raise HTTPException(
+                status_code=504,
+                detail=f"Pipeline exceeded {PIPELINE_TIMEOUT_SECONDS}s — try a smaller image set"
+            )
         except PipelineStageError as e:
+            logger.error(
+                f"[request_id={correlation_id}] Pipeline failed at stage '{e.stage}': {e.detail}"
+            )
             raise HTTPException(
                 status_code=500,
                 detail=f"{e.stage} failed: {e.detail}"
@@ -141,6 +178,10 @@ async def predict(
         "geojson_url": f"/api/v1/projects/{proj_id}/layers/parcels.geojson"
     }
 
+    logger.info(
+        f"[request_id={correlation_id}] /predict completed successfully for project={proj_id}"
+    )
+
     return {
         "status": res["status"],
         "message": res["message"],
@@ -148,5 +189,6 @@ async def predict(
         "coordinate_space": res["coordinate_space"],
         "summary": res["summary"],
         "geojson": res["geojson"],
-        "artifacts": artifact_urls
+        "artifacts": artifact_urls,
+        "correlation_id": correlation_id
     }
