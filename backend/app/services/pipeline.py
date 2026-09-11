@@ -26,6 +26,8 @@ from gis.gsd import calculate_gsd
 from gis.geojson import generate_parcels_geojson
 
 
+from app.services.errors import PipelineStageError
+
 def execute_pipeline(
     project_id: str,
     image_paths: List[str],
@@ -46,40 +48,52 @@ def execute_pipeline(
 
     # Step 1: Member 4 — OpenCV Orthomosaic Stitching
     print(f"⚙️ [Backend Orchestrator] Invoking Member 4 (OpenCV) on {len(image_paths)} images...")
-    stitcher = DroneStitcher()
-    stitcher.stitch_image_list(image_paths, stitched_img_path)
+    try:
+        stitcher = DroneStitcher()
+        stitcher.stitch_image_list(image_paths, stitched_img_path)
+    except Exception as e:
+        raise PipelineStageError("stitching", str(e))
 
     # Step 2: Member 5 — GIS EXIF Extraction
     print("⚙️ [Backend Orchestrator] Invoking Member 5 (GIS) for EXIF telemetry...")
-    gps_meta = {"has_gps": False, "coordinate_space": "pixel"}
-    for p in image_paths:
-        meta = extract_gps_coordinates(p)
-        if meta.get("has_gps"):
-            gps_meta = meta
-            break
+    try:
+        gps_meta = {"has_gps": False, "coordinate_space": "pixel"}
+        for p in image_paths:
+            meta = extract_gps_coordinates(p)
+            if meta.get("has_gps"):
+                gps_meta = meta
+                break
+    except Exception as e:
+        raise PipelineStageError("GPS extraction", str(e))
 
     # Step 3: Member 3 — AI Inference & Spectral Analysis
     print("⚙️ [Backend Orchestrator] Invoking Member 3 (AI) on stitched composite...")
-    ai_results = run_inference(stitched_img_path, project_output_dir)
+    try:
+        ai_results = run_inference(stitched_img_path, project_output_dir)
+    except Exception as e:
+        raise PipelineStageError("inference", str(e))
 
     # Step 4: Member 5 — GIS GeoJSON Polygon Generation
     print("⚙️ [Backend Orchestrator] Invoking Member 5 (GIS) to generate GeoJSON...")
-    geo_reference = None
-    if gps_meta.get("has_gps") and gps_meta.get("coordinate_space") == "geographic":
-        altitude = gps_meta.get("altitude_m", 120.0)
-        gsd_info = calculate_gsd(flight_height_m=altitude)
-        geo_reference = {
-            "coordinate_space": "geographic",
-            "latitude": gps_meta["latitude"],
-            "longitude": gps_meta["longitude"],
-            "gsd_cm": gsd_info["gsd_cm_per_px"]
-        }
+    try:
+        geo_reference = None
+        if gps_meta.get("has_gps") and gps_meta.get("coordinate_space") == "geographic":
+            altitude = gps_meta.get("altitude_m", 120.0)
+            gsd_info = calculate_gsd(flight_height_m=altitude)
+            geo_reference = {
+                "coordinate_space": "geographic",
+                "latitude": gps_meta["latitude"],
+                "longitude": gps_meta["longitude"],
+                "gsd_cm": gsd_info["gsd_cm_per_px"]
+            }
 
-    geojson_doc = generate_parcels_geojson(
-        parcels=ai_results.get("predictions", []),
-        output_path=geojson_out_path,
-        geo_reference=geo_reference
-    )
+        geojson_doc = generate_parcels_geojson(
+            parcels=ai_results.get("predictions", []),
+            output_path=geojson_out_path,
+            geo_reference=geo_reference
+        )
+    except Exception as e:
+        raise PipelineStageError("GeoJSON generation", str(e))
 
     detected_classes = list({p["class"] for p in ai_results.get("predictions", [])})
 
