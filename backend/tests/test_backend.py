@@ -193,6 +193,34 @@ class TestBackendModule(unittest.TestCase):
 
         asyncio.run(run_concurrent())
 
+    # Priority 2 Verification: hung pipeline times out with 504 and releases semaphore slot
+    def test_hung_pipeline_times_out_with_504_and_releases_slot(self):
+        import time
+        from unittest.mock import patch
+        import app.routes.predict as predict_module
+
+        def hang_execute(*args, **kwargs):
+            time.sleep(0.3)
+            return {}
+
+        original_timeout = predict_module.PIPELINE_TIMEOUT_SECONDS
+        predict_module.PIPELINE_TIMEOUT_SECONDS = 0.05
+
+        try:
+            with patch("app.routes.predict.execute_pipeline", side_effect=hang_execute):
+                response = self.client.post("/predict", headers=self.auth_headers)
+                self.assertEqual(response.status_code, 504)
+                self.assertIn("Pipeline exceeded", response.json()["detail"])
+                self.assertIn("try a smaller image set", response.json()["detail"])
+
+            # Concurrency slot must be immediately available for the next request
+            self.assertEqual(pipeline_concurrency_guard._active_count, 0)
+        finally:
+            predict_module.PIPELINE_TIMEOUT_SECONDS = original_timeout
+
+        next_res = self.client.post("/predict", headers=self.auth_headers)
+        self.assertEqual(next_res.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

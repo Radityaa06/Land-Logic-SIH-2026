@@ -29,6 +29,8 @@ OUTPUT_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".dng"}
 # 15MB limit per image prevents excessive memory consumption on single-worker deployments
 MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024  # 15MB
+# 90s timeout provides headroom for multi-image SIFT stitching and sliding-window tile inference while preventing hung jobs from locking concurrency slots indefinitely
+PIPELINE_TIMEOUT_SECONDS = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "90"))
 
 
 @router.post(
@@ -128,8 +130,16 @@ async def predict(
     # 3. Concurrency guard: cap concurrent in-flight pipeline runs to prevent worker exhaustion
     async with pipeline_concurrency_guard:
         try:
-            # Run blocking CPU pipeline in worker thread to keep the FastAPI event loop responsive
-            res = await asyncio.to_thread(execute_pipeline, proj_id, saved_paths, OUTPUT_BASE_DIR)
+            # Run blocking CPU pipeline in worker thread with timeout protection
+            res = await asyncio.wait_for(
+                asyncio.to_thread(execute_pipeline, proj_id, saved_paths, OUTPUT_BASE_DIR),
+                timeout=PIPELINE_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=504,
+                detail=f"Pipeline exceeded {PIPELINE_TIMEOUT_SECONDS}s — try a smaller image set"
+            )
         except PipelineStageError as e:
             raise HTTPException(
                 status_code=500,
