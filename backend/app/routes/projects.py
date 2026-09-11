@@ -6,12 +6,14 @@ Branch: feature/fastapi-backend
 """
 
 from typing import List
-from fastapi import APIRouter, HTTPException
-from app.models.schemas import ProjectCreate, ProjectResponse
 from datetime import datetime
 import uuid
+from fastapi import APIRouter, HTTPException, Depends
 
-router = APIRouter()
+from app.models.schemas import ProjectCreate, ProjectResponse
+from app.utils.auth import verify_api_key
+
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 # In-memory session store for hackathon sprint
 PROJECTS_DB = {}
