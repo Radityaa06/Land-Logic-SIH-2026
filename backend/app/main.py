@@ -8,6 +8,13 @@ Branch: feature/fastapi-backend
 import os
 import sys
 
+# Ensure UTF-8 standard streams on Windows environments
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+
 # Ensure repository root is on sys.path for opencv, ai, and gis resolution
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if REPO_ROOT not in sys.path:
@@ -17,12 +24,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from app.routes import projects, upload, pipeline, predict
+from app.dependencies import log_startup_security_warnings
 
 app = FastAPI(
     title="Land Logic DRONE-MAPPING-AI API",
     description="Backend orchestration gateway for drone image stitching, AI land segmentation, and GIS georeferencing.",
     version="1.0.0"
 )
+
+# Startup hook to warn if API_KEY is not configured
+@app.on_event("startup")
+async def startup_event():
+    log_startup_security_warnings()
 
 # Configure CORS via environment variable with local dev defaults
 ALLOWED_ORIGINS = os.getenv(
@@ -39,7 +52,7 @@ app.add_middleware(
 )
 
 # Register route modules
-app.include_router(predict.router)  # Handles /predict and /api/v1/predict
+app.include_router(predict.router)  # Handles /predict and /api/v1/predict with API key auth
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["Projects"])
 app.include_router(upload.router, prefix="/api/v1/projects", tags=["Upload"])
 app.include_router(pipeline.router, prefix="/api/v1", tags=["Pipeline & Jobs"])
@@ -68,6 +81,10 @@ async def get_artifact_file(project_id: str, filename: str):
 
 @app.get("/health", tags=["Health"])
 async def health_check():
+    """
+    Public health check endpoint for platform uptime monitoring (Render, UptimeRobot).
+    Requires no API key.
+    """
     return {
         "status": "ok",
         "service": "Land Logic Drone API Gateway",

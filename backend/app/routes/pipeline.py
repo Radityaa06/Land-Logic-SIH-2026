@@ -9,12 +9,13 @@ import os
 import json
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
 
 from app.models.schemas import StitchRequest, AIAnalyzeRequest, JobStatusResponse
 from app.services.orchestrator import run_full_pipeline
+from app.utils.auth import verify_api_key
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 JOBS_DB = {}
 OUTPUT_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "outputs"))
