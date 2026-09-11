@@ -60,4 +60,9 @@ class PredictResponse(BaseModel):
     summary: PredictSummary
     geojson: Dict[str, Any]
     artifacts: Dict[str, str]
+    correlation_id: Optional[str] = Field(None, description="Request correlation ID for log tracing")
+
+
+class ErrorResponse(BaseModel):
+    detail: str = Field(..., description="Standardized error detail message")
 

@@ -249,6 +249,58 @@ class TestBackendModule(unittest.TestCase):
 
         asyncio.run(run_sse_test())
 
+    # Priority 4 Verification: File count cap (>60 images) returns 422
+    def test_predict_exceeds_max_image_count_returns_422(self):
+        files = [
+            ("files", (f"drone_frame_{i:03d}.png", io.BytesIO(b"fake_content"), "image/png"))
+            for i in range(61)
+        ]
+        response = self.client.post("/predict", files=files, headers=self.auth_headers)
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("exceeds maximum limit of 60 images", response.json()["detail"])
+
+    # Priority 4 Verification: Correlation/request ID returned in response and logged
+    def test_predict_correlation_id_returned(self):
+        valid_png = _make_valid_png_bytes(10, 10)
+        files = [("files", ("valid_drone_corr.png", io.BytesIO(valid_png), "image/png"))]
+        response = self.client.post("/predict", files=files, headers=self.auth_headers)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("correlation_id", data)
+        self.assertIsNotNone(data["correlation_id"])
+        self.assertEqual(len(data["correlation_id"]), 36)  # Standard UUID4 string length
+
+    # Priority 4 Verification: verify_api_key dependency directly raises 401
+    def test_dependencies_verify_api_key_direct(self):
+        from app.dependencies import verify_api_key as dep_verify_api_key
+        from fastapi import HTTPException
+
+        # 1. Unset API_KEY on server fails closed with 401
+        del os.environ["API_KEY"]
+        with self.assertRaises(HTTPException) as cm:
+            asyncio.run(dep_verify_api_key("any_key"))
+        self.assertEqual(cm.exception.status_code, 401)
+        self.assertIn("no API_KEY configured on server", cm.exception.detail)
+
+        # 2. Re-set server API_KEY
+        os.environ["API_KEY"] = self.api_key
+
+        # 3. Missing key raises 401
+        with self.assertRaises(HTTPException) as cm:
+            asyncio.run(dep_verify_api_key(None))
+        self.assertEqual(cm.exception.status_code, 401)
+        self.assertIn("Invalid or missing API key", cm.exception.detail)
+
+        # 4. Wrong key raises 401
+        with self.assertRaises(HTTPException) as cm:
+            asyncio.run(dep_verify_api_key("incorrect_key"))
+        self.assertEqual(cm.exception.status_code, 401)
+        self.assertIn("Invalid or missing API key", cm.exception.detail)
+
+        # 5. Valid key returns key string
+        res = asyncio.run(dep_verify_api_key(self.api_key))
+        self.assertEqual(res, self.api_key)
+
 
 if __name__ == "__main__":
     unittest.main()

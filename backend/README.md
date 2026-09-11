@@ -79,6 +79,7 @@ Interactive Swagger docs available at: `http://localhost:8000/docs`
 | `API_KEY` | *(None / Unset)* | Shared secret key required in `X-API-Key` header for `/predict`. Fails closed (HTTP 401) if unset. |
 | `MAX_CONCURRENT_REQUESTS` | `3` | Maximum simultaneous heavy pipeline jobs. Excess requests return HTTP 503. |
 | `PIPELINE_TIMEOUT_SECONDS` | `90` | Maximum execution time per pipeline run before returning HTTP 504. |
+| `MAX_IMAGE_COUNT` | `60` | Maximum number of images allowed per batch upload. Excess requests return HTTP 422. |
 
 ---
 
