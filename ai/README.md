@@ -1,39 +1,51 @@
-# AI & Computer Vision — Land Logic DRONE-MAPPING-AI
+# AI & Land Vision Engine — Land Logic DRONE-MAPPING-AI
 
 🤖 **Owner**: Member 3  
-**Tech Stack**: PyTorch, Ultralytics YOLOv8-Seg / UNet, NumPy, OpenCV, Scikit-image
+🌿 **Assigned Branch**: `feature/ai-integration`  
+🛠️ **Tech Stack**: PyTorch, Ultralytics YOLOv8-Seg / UNet, NumPy, PIL, Scikit-learn  
+📁 **Workspace**: `ai/`
 
 ---
 
 ## 🎯 Scope & Responsibilities
-1. **Land Use & Crop Segmentation**: Classifies orthomosaic tiles into distinct categories (crops, bare soil, forest canopy, water bodies, structures).
-2. **Vegetation Health & NDVI**: Calculates spectral indices (VARI / NDVI) to detect crop water stress and canopy density.
-3. **Sliding-Window Tiling**: Chunks ultra-large aerial mosaics into manageable 512x512 inference windows and reassembles predictions seamlessly without border seams.
-4. **Boundary Extraction**: Emits vectorized field boundaries and parcel contours for consumption by Member 5 (GIS).
+1. **Land-Use Classification**: Classifies orthomosaic tiles into the 5 project-defined categories:
+   - `agricultural_land`
+   - `barren_soil`
+   - `forests`
+   - `water_bodies`
+   - `man_made_structures`
+2. **Spectral Vegetative Index (VARI)**: Calculates the Visible Atmospherically Resistant Index (`(G - R) / (G + R - B)`) to evaluate crop health and canopy vitality.
+3. **Sliding-Window Tiling & Reassembly**: Segments gigapixel orthomosaics into 512x512 inference windows with overlap and reconstructs seamless masks (`ai/tiling.py`).
+4. **Structured Prediction Formatting**: Prepares parcel predictions (class, confidence, bounding boxes, mean VARI) for consumption by Member 5 (GIS).
+5. **Clean Model Loading**: Standardized model wrapper interface in `ai/model.py` that operates cleanly with or without downloaded checkpoints.
 
 ---
 
-## 🚀 Quickstart
-
-```bash
-cd ai
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Run inference test on a stitched aerial image
-python inference/predict.py --input ../shared/sample_images/ --output ../shared/sample_outputs/
+## 📂 Directory Structure
+```text
+ai/
+├── model.py              # Land segmentation classes and model loading interface
+├── inference.py          # Top-level inference runner coordinating tiling, model & postprocess
+├── tiling.py             # Sliding-window chip generation and mask reconstruction
+├── postprocess.py        # VARI index computation & parcel contour discovery
+├── tests/
+│   └── test_ai.py        # Unit test suite for AI components
+├── models/               # Model checkpoints (.gitkeep)
+├── inference/
+│   ├── predict.py        # Backward-compatibility wrapper
+│   └── segmentation.py   # Backward-compatibility wrapper
+├── requirements.txt      # AI dependencies
+└── README.md
 ```
 
 ---
 
-## 📂 Directory Layout
-```text
-ai/
-├── models/               # Model weights & ONNX checkpoints (.gitkeep)
-├── inference/
-│   ├── predict.py        # Top-level inference entrypoint
-│   └── segmentation.py   # Sliding window tiler & NDVI math
-├── requirements.txt      # PyTorch & CV dependencies
-└── README.md
+## 🚀 Execution & Testing
+
+```bash
+# Run unit tests
+python3 -m unittest ai/tests/test_ai.py
+
+# Run standalone inference
+python3 -m ai.inference
 ```

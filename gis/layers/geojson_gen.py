@@ -1,85 +1,45 @@
 """
 Raster-to-Vector GeoJSON polygon generator
 Member 5: GIS Engineer
+(Maintained for backward compatibility; delegates to gis.geojson)
 """
 
 import argparse
-import json
-import os
+from gis.geojson import generate_parcels_geojson
 
 
-def generate_parcels_geojson(mask_path: str, output_path: str, base_lat: float = 37.7749, base_lon: float = -122.4194):
+def generate_legacy_parcels_geojson(mask_path: str, output_path: str, base_lat: float = 37.7749, base_lon: float = -122.4194):
     """
-    Converts raster segmentation parcels into standardized RFC 7946 GeoJSON polygons
+    Adapter wrapper matching legacy signature.
     """
-    print(f"🗺️ [GIS] Converting segmentation raster ({mask_path}) to GeoJSON...")
-
-    # Generates standard parcel polygons mapped to real spatial coordinates
-    delta_deg = 0.002  # Approx ~200 meters
-
-    features = [
+    mock_parcels = [
         {
-            "type": "Feature",
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [base_lon, base_lat],
-                        [base_lon + delta_deg, base_lat],
-                        [base_lon + delta_deg, base_lat - delta_deg],
-                        [base_lon, base_lat - delta_deg],
-                        [base_lon, base_lat]
-                    ]
-                ]
-            },
-            "properties": {
-                "id": "field_sector_01",
-                "crop_type": "Corn / Maize",
-                "health_status": "OPTIMAL",
-                "mean_ndvi": 0.78,
-                "area_hectares": 4.85
-            }
+            "parcel_id": "field_sector_01",
+            "class": "agricultural_land",
+            "confidence": 0.94,
+            "mean_vari": 0.78,
+            "pixel_bbox": [20, 20, 220, 220],
+            "pixel_area": 40000
         },
         {
-            "type": "Feature",
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [base_lon + delta_deg + 0.0005, base_lat],
-                        [base_lon + (2 * delta_deg), base_lat],
-                        [base_lon + (2 * delta_deg), base_lat - delta_deg],
-                        [base_lon + delta_deg + 0.0005, base_lat - delta_deg],
-                        [base_lon + delta_deg + 0.0005, base_lat]
-                    ]
-                ]
-            },
-            "properties": {
-                "id": "field_sector_02",
-                "crop_type": "Soybeans",
-                "health_status": "WATER_STRESSED",
-                "mean_ndvi": 0.52,
-                "area_hectares": 3.92
-            }
+            "parcel_id": "field_sector_02",
+            "class": "forests",
+            "confidence": 0.88,
+            "mean_vari": 0.52,
+            "pixel_bbox": [240, 20, 440, 220],
+            "pixel_area": 40000
         }
     ]
-
-    geojson_doc = {
-        "type": "FeatureCollection",
-        "crs": {
-            "type": "name",
-            "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}
-        },
-        "features": features
+    geo_ref = {
+        "coordinate_space": "geographic",
+        "latitude": base_lat,
+        "longitude": base_lon,
+        "gsd_cm": 2.5
     }
+    return generate_parcels_geojson(mock_parcels, output_path=output_path, geo_reference=geo_ref)
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(geojson_doc, f, indent=2)
 
-    print(f"✅ [GIS] Valid GeoJSON saved to: {output_path}")
-    return output_path
-
+__all__ = ["generate_parcels_geojson", "generate_legacy_parcels_geojson"]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -87,4 +47,4 @@ if __name__ == "__main__":
     parser.add_argument("--output", default="../shared/sample_outputs/parcels.geojson")
     args = parser.parse_args()
 
-    generate_parcels_geojson(args.input, args.output)
+    generate_legacy_parcels_geojson(args.input, args.output)

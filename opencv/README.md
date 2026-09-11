@@ -1,39 +1,48 @@
 # OpenCV & Orthomosaic Stitching — Land Logic DRONE-MAPPING-AI
 
 👁️ **Owner**: Member 4  
-**Tech Stack**: OpenCV (cv2), NumPy, Scikit-image, imutils
+🌿 **Assigned Branch**: `feature/opencv`  
+🛠️ **Tech Stack**: OpenCV (cv2), NumPy, Scikit-image, imutils  
+📁 **Workspace**: `opencv/`
 
 ---
 
 ## 🎯 Scope & Responsibilities
-1. **Feature Matching & Alignment**: SIFT / ORB keypoint extraction with RANSAC-based homography matrix estimation.
-2. **Global Registration**: Aligns dozens of overlapping aerial photos into a continuous panoramic projection.
-3. **Seamline Blending**: Eliminates exposure discontinuities and flight shadow variations via multi-band pyramid blending.
-4. **Distortion Calibration**: Compensates for wide-angle drone lens curvature and vignetting.
+1. **Validation & Quality Auditing**: Checks input drone frames for blur (Laplacian variance), exposure, and contrast limits.
+2. **Preprocessing**: Normalizes illumination differences using CLAHE (`opencv/preprocess.py`).
+3. **Feature Extraction**: SIFT and ORB keypoint detection and local descriptor extraction (`opencv/features.py`).
+4. **Feature Matching & Homography**: Robust pairwise matching with Lowe's ratio test and RANSAC homography matrix estimation (`opencv/matching.py`).
+5. **Seamline Blending**: Smooths exposure discontinuities and flight shadow variations via feather and multi-band blending (`opencv/blending.py`).
+6. **Global Orthomosaic Stitching**: Coordinates the multi-frame registration pipeline and outputs composite imagery (`opencv/stitching.py`).
 
 ---
 
-## 🚀 Quickstart
-
-```bash
-cd opencv
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Run stitching pipeline on sample flight images
-python stitching/stitcher.py --input ../shared/sample_images/ --output ../shared/sample_outputs/stitched_ortho.png
+## 📂 Directory Structure
+```text
+opencv/
+├── preprocess.py         # CLAHE exposure balance & image quality audit
+├── features.py           # SIFT & ORB feature detector and descriptors
+├── matching.py           # k-NN matching & RANSAC homography estimation
+├── blending.py           # Feather blending & seam smoothing
+├── stitching.py          # DroneStitcher orchestration engine
+├── tests/
+│   └── test_opencv.py    # Unit test suite for OpenCV routines
+├── stitching/
+│   └── stitcher.py       # Backward-compatibility wrapper
+├── preprocessing/
+│   └── color_correction.py # Backward-compatibility wrapper
+├── requirements.txt      # OpenCV dependencies
+└── README.md
 ```
 
 ---
 
-## 📂 Directory Layout
-```text
-opencv/
-├── stitching/
-│   └── stitcher.py       # SIFT feature matcher & homography warp
-├── preprocessing/
-│   └── color_correction.py # Histogram equalization & vignetting correction
-├── requirements.txt      # OpenCV dependencies
-└── README.md
+## 🚀 Execution & Testing
+
+```bash
+# Run unit tests
+python3 -m unittest opencv/tests/test_opencv.py
+
+# Run standalone stitcher
+python3 -m opencv.stitching
 ```

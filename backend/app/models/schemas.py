@@ -43,3 +43,21 @@ class JobStatusResponse(BaseModel):
     progress_pct: float
     message: str
     updated_at: datetime
+
+
+class PredictSummary(BaseModel):
+    image_count: int
+    mean_vari: float
+    detected_parcels: int
+    classes_detected: List[str]
+
+
+class PredictResponse(BaseModel):
+    status: str
+    message: str
+    project_id: str
+    coordinate_space: str = Field(..., description="'geographic' or 'pixel'")
+    summary: PredictSummary
+    geojson: Dict[str, Any]
+    artifacts: Dict[str, str]
+

@@ -1,50 +1,64 @@
-# Backend — Land Logic DRONE-MAPPING-AI
+# Backend & Pipeline Orchestrator — Land Logic DRONE-MAPPING-AI
 
 ⚙️ **Owner**: Member 2  
-**Tech Stack**: Python 3.10+, FastAPI, Uvicorn, Pydantic, Python-Multipart
+🌿 **Assigned Branch**: `feature/fastapi-backend`  
+🛠️ **Tech Stack**: Python 3.10+, FastAPI, Uvicorn, Pydantic v2, Python-Multipart, Aiofiles  
+📁 **Workspace**: `backend/`
 
 ---
 
 ## 🎯 Scope & Responsibilities
-1. **API Gateway**: Provides RESTful endpoints for project management, batch image upload, and pipeline execution.
-2. **Pipeline Orchestrator**: Coordinates inter-process execution between Member 4 (OpenCV Stitcher), Member 3 (AI Inference), and Member 5 (GIS Georeferencer).
-3. **Task Queue & Streaming**: Manages background job status and emits real-time Server-Sent Events (SSE) to the frontend.
-4. **Artifact Management**: Organizes file staging in `backend/uploads/` and exportable layers in `backend/outputs/`.
+1. **API Gateway & Core Router**: FastAPI application with CORS, request validation, structured error handling, and health endpoints.
+2. **Central Pipeline Coordinator**:
+   Acts as the central pipeline orchestrator connecting OpenCV, AI, and GIS:
+   ```text
+   Frontend  ──>  POST /predict  ──>  Backend
+                                        │
+                                        ├──> Member 4 (OpenCV Stitching)
+                                        ├──> Member 3 (AI Segmentation & VARI)
+                                        └──> Member 5 (GIS Georeferencing & GeoJSON)
+                                        │
+   Frontend  <──  JSON Response   <─────┘
+   ```
+3. **Artifact & Layer Serving**: Streams stitched PNG/TIFF images and GeoJSON layers (`GET /api/v1/projects/{id}/artifacts/{filename}`).
+4. **Job Monitoring & Project Sessions**: Handles background job tracking (`/api/v1/jobs/{id}`) and batch image upload staging.
 
 ---
 
-## 🚀 Quickstart
-
-```bash
-# 1. Navigate to backend directory
-cd backend
-
-# 2. Set up virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Start FastAPI server with live reload
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Interactive API documentation available at `http://localhost:8000/docs` (Swagger UI).
-
----
-
-## 📂 Directory Layout
+## 📂 Directory Structure
 ```text
 backend/
 ├── app/
-│   ├── main.py           # FastAPI entrypoint & middleware configuration
-│   ├── routes/           # projects.py, upload.py, pipeline.py
-│   ├── services/         # orchestrator.py (Job coordinator)
-│   ├── models/           # schemas.py (Pydantic data models)
-│   └── utils/            # logger.py, file_helpers.py
-├── uploads/              # Incoming drone image staging (.gitkeep)
+│   ├── main.py           # FastAPI entrypoint, CORS & static artifact mounts
+│   ├── routes/
+│   │   ├── predict.py    # Unified POST /predict and /api/v1/predict endpoint
+│   │   ├── projects.py   # Project creation and status retrieval
+│   │   ├── upload.py     # Multi-image multipart upload handler
+│   │   └── pipeline.py   # Background job dispatch and job status polling
+│   ├── services/
+│   │   ├── pipeline.py   # Central pipeline coordinator (invoking OpenCV, AI, GIS)
+│   │   └── orchestrator.py # Async job queue & stage state transitions
+│   ├── models/
+│   │   └── schemas.py    # Pydantic models (Project, Predict, Job schemas)
+│   └── utils/
+│       └── logger.py     # Logging helpers
+├── tests/
+│   └── test_backend.py   # Unit test suite for backend pipeline
+├── uploads/              # Incoming drone flight images (.gitkeep)
 ├── outputs/              # Stitched orthomosaics & GeoJSON exports (.gitkeep)
 ├── requirements.txt      # Python dependencies
 └── README.md
 ```
+
+---
+
+## 🚀 Execution & Testing
+
+```bash
+# Run backend unit tests
+python3 -m unittest backend/tests/test_backend.py
+
+# Run FastAPI dev server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+Interactive Swagger docs available at: `http://localhost:8000/docs`
