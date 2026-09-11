@@ -6,6 +6,13 @@ Branch: feature/fastapi-backend
 """
 
 import os
+import sys
+
+# Ensure repository root is on sys.path for opencv, ai, and gis resolution
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
