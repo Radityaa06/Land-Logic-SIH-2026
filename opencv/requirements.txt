@@ -1,3 +1,6 @@
+# Land Logic DRONE-MAPPING-AI — OpenCV Dependencies
+# Member 4: OpenCV & Orthomosaic Stitching (feature/opencv)
+
 opencv-python>=4.9.0
 numpy>=1.26.0
 scikit-image>=0.22.0

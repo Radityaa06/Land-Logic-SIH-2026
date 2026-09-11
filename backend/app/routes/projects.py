@@ -1,7 +1,11 @@
 """
 Project management routes
+Member 2: Backend & Pipeline Orchestrator
+Workspace: backend/
+Branch: feature/fastapi-backend
 """
 
+from typing import List
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import ProjectCreate, ProjectResponse
 from datetime import datetime
@@ -27,6 +31,11 @@ async def create_project(payload: ProjectCreate):
     }
     PROJECTS_DB[proj_id] = project
     return project
+
+
+@router.get("", response_model=List[ProjectResponse])
+async def list_projects():
+    return list(PROJECTS_DB.values())
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)

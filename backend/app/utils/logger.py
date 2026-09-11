@@ -1,23 +1,26 @@
 """
-Application logging configuration
+Structured Logger Utility
+Member 2: Backend & Pipeline Orchestrator
+Workspace: backend/
+Branch: feature/fastapi-backend
 """
 
 import logging
 import sys
 
+# Configure standard logging format
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 
-def setup_logger(name: str = "land_logic"):
-    logger = logging.getLogger(name)
-    if not logger.handlers:
-        logger.setLevel(logging.INFO)
-        formatter = logging.Formatter(
-            "[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
-        )
-        ch = logging.StreamHandler(sys.stdout)
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
-    return logger
+logger = logging.getLogger("LandLogic")
 
 
-logger = setup_logger()
+def log_pipeline_event(member: str, stage: str, message: str):
+    """
+    Logs an event labeled with the corresponding team member.
+    Example: log_pipeline_event('M4', 'OPENCV', 'SIFT matching completed')
+    """
+    logger.info(f"[{member}] [{stage}] {message}")

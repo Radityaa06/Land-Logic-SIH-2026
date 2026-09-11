@@ -2,6 +2,8 @@
   "name": "land-logic-drone-mapping-frontend",
   "private": true,
   "version": "1.0.0",
+  "description": "Land Logic DRONE-MAPPING-AI Frontend Dashboard (SIH 2026)",
+  "author": "Land Logic Team",
   "type": "module",
   "scripts": {
     "dev": "vite",

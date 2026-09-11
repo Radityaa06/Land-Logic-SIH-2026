@@ -1,3 +1,6 @@
+# Land Logic DRONE-MAPPING-AI — GIS & Georeferencing Dependencies
+# Member 5: GIS & Georeferencing (feature/gis-geojson)
+
 rasterio>=1.3.9
 geopandas>=0.14.3
 shapely>=2.0.3

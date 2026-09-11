@@ -1,9 +1,9 @@
+# Land Logic DRONE-MAPPING-AI — Git Ignore Configuration (SIH 2026)
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
 # Distribution / packaging
@@ -44,7 +44,7 @@ frontend/dist/
 frontend/.next/
 frontend/out/
 
-# Environment Variables
+# Environment Variables & Secrets
 .env
 .env.local
 .env.development.local
@@ -59,7 +59,12 @@ frontend/out/
 .DS_Store
 Thumbs.db
 
-# Large Model Files & Checkpoints (Store in Cloud / HuggingFace / DVC)
+# Test & Coverage Caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model Files & Checkpoints (Store on S3 / Google Drive / Hugging Face)
 ai/models/*.pt
 ai/models/*.pth
 ai/models/*.onnx

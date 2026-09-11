@@ -1,3 +1,6 @@
+# Land Logic DRONE-MAPPING-AI — AI Engine Dependencies
+# Member 3: AI / Land Vision Engine (feature/ai-integration)
+
 torch>=2.1.0
 torchvision>=0.16.0
 ultralytics>=8.1.0
