@@ -35,23 +35,50 @@ CLASS_LABEL_MAP: Dict[int, str] = {
 class LandSegmentationModel:
     """
     Segmentation interface for drone aerial imagery.
-    Loads PyTorch / ONNX checkpoint if available, or operates in calibrated heuristic mode.
+    Loads PyTorch / serialized checkpoint if available, or operates in calibrated heuristic mode.
     """
     def __init__(self, checkpoint_path: Optional[str] = None, device: str = "cpu"):
         self.checkpoint_path = checkpoint_path
         self.device = device
         self.classes = LAND_CLASSES
+        self.model: Optional[Any] = None
         self.is_loaded = False
         self._load_weights()
 
     def _load_weights(self) -> None:
+        """
+        Ingests real model weights when checkpoint_path is provided, or falls back to heuristic engine.
+        """
         if self.checkpoint_path and os.path.exists(self.checkpoint_path):
             print(f"🤖 [AI Engine] Loading weights from {self.checkpoint_path}")
-            # Real weights ingestion point when checkpoint provided by team
-            self.is_loaded = True
+            try:
+                if self.checkpoint_path.endswith((".pt", ".pth")):
+                    try:
+                        import torch
+                        self.model = torch.load(self.checkpoint_path, map_location=self.device)
+                        if hasattr(self.model, "eval"):
+                            self.model.eval()
+                        self.is_loaded = True
+                        print("🤖 [AI Engine] Successfully loaded PyTorch model checkpoint.")
+                    except ImportError:
+                        print("⚠️ [AI Engine] PyTorch not installed; falling back to heuristic engine.")
+                        self.is_loaded = False
+                elif self.checkpoint_path.endswith((".joblib", ".pkl")):
+                    import pickle
+                    with open(self.checkpoint_path, "rb") as f:
+                        self.model = pickle.load(f)
+                    self.is_loaded = True
+                    print("🤖 [AI Engine] Successfully loaded serialized model checkpoint.")
+                else:
+                    print(f"⚠️ [AI Engine] Unsupported checkpoint format: {self.checkpoint_path}")
+                    self.is_loaded = False
+            except Exception as e:
+                print(f"⚠️ [AI Engine] Failed to load checkpoint ({e}); falling back to heuristic engine.")
+                self.is_loaded = False
         else:
             print("🤖 [AI Engine] No checkpoint provided. Initialized heuristic spectral segmentation engine.")
             self.is_loaded = False
+
 
     def predict_chip(self, chip: np.ndarray) -> np.ndarray:
         """
