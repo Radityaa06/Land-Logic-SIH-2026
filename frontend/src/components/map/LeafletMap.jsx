@@ -6,13 +6,14 @@ import FeaturePopup from './FeaturePopup';
 import RasterLayer from './RasterLayer';
 
 /**
- * LeafletMap Component
+ * GeoParcelCanvas Component — custom SVG parcel visualization (not Leaflet)
  * Member 6: Leaflet / Interactive Map
  * Workspace: frontend/src/components/map/
  * Branch: feature/leaflet-map
  *
- * Renders satellite / canvas base with GeoJSON vector overlays.
- * Strictly respects 'coordinate_space' ('geographic' vs 'pixel') so fake GPS is NEVER shown.
+ * Renders custom SVG parcel boundaries and orthomosaic raster overlays.
+ * Strictly respects 'coordinate_space' ('geographic' vs 'pixel') so non-georeferenced
+ * drone imagery is visualized accurately without misleading world tiles.
  */
 export default function LeafletMap({
   geojsonData,
