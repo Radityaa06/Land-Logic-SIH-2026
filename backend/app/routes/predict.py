@@ -19,6 +19,7 @@ from PIL import Image
 from app.models.schemas import PredictResponse
 from app.services.pipeline import execute_pipeline
 from app.services.errors import PipelineStageError
+from app.services.orchestrator import emit_stage_event
 from app.dependencies import verify_api_key, pipeline_concurrency_guard
 from app.utils.logger import logger
 
@@ -148,16 +149,20 @@ async def predict(
 
     # 4. Concurrency guard: cap concurrent in-flight pipeline runs to prevent worker exhaustion
     async with pipeline_concurrency_guard:
+        def on_progress(p_id: str, stage: str, status: str, message: str) -> None:
+            emit_stage_event(p_id, stage, status, message)
+
         try:
-            # Run blocking CPU pipeline in worker thread with timeout protection
+            # Run blocking CPU pipeline in worker thread with timeout protection and real stage callbacks
             res = await asyncio.wait_for(
-                asyncio.to_thread(execute_pipeline, proj_id, saved_paths, OUTPUT_BASE_DIR),
+                asyncio.to_thread(execute_pipeline, proj_id, saved_paths, OUTPUT_BASE_DIR, on_progress),
                 timeout=PIPELINE_TIMEOUT_SECONDS
             )
         except asyncio.TimeoutError:
             logger.error(
                 f"[request_id={correlation_id}] Pipeline exceeded {PIPELINE_TIMEOUT_SECONDS}s timeout"
             )
+            emit_stage_event(proj_id, "complete", "error", f"Pipeline exceeded {PIPELINE_TIMEOUT_SECONDS}s — try a smaller image set")
             raise HTTPException(
                 status_code=504,
                 detail=f"Pipeline exceeded {PIPELINE_TIMEOUT_SECONDS}s — try a smaller image set"
@@ -166,6 +171,7 @@ async def predict(
             logger.error(
                 f"[request_id={correlation_id}] Pipeline failed at stage '{e.stage}': {e.detail}"
             )
+            emit_stage_event(proj_id, "complete", "error", f"{e.stage} failed: {e.detail}")
             raise HTTPException(
                 status_code=500,
                 detail=f"{e.stage} failed: {e.detail}"

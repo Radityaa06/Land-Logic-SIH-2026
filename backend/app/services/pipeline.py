@@ -14,7 +14,7 @@ import os
 import sys
 import time
 import uuid
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Callable
 
 # Ensure project root is on sys.path for cross-module orchestration
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -34,7 +34,8 @@ from app.utils.logger import logger, log_request
 def execute_pipeline(
     project_id: str,
     image_paths: List[str],
-    outputs_base_dir: str
+    outputs_base_dir: str,
+    progress_callback: Optional[Callable[[str, str, str, str], None]] = None
 ) -> Dict[str, Any]:
     """
     Executes the modular pipeline across Members 4, 3, and 5:
@@ -44,6 +45,15 @@ def execute_pipeline(
     4. GIS: Formats parcels into RFC 7946 GeoJSON with coordinate_space
     Emits real-time stage transition events for frontend SSE listeners.
     """
+    def _emit(stage: str, status: str, message: str) -> None:
+        if progress_callback:
+            try:
+                progress_callback(project_id, stage, status, message)
+            except Exception:
+                pass
+        else:
+            emit_stage_event(project_id, stage, status, message)
+
     request_id = str(uuid.uuid4())
     project_output_dir = os.path.join(outputs_base_dir, project_id)
     os.makedirs(project_output_dir, exist_ok=True)
@@ -52,7 +62,7 @@ def execute_pipeline(
     geojson_out_path = os.path.join(project_output_dir, "parcels.geojson")
 
     # Step 1: Member 4 — OpenCV Orthomosaic Stitching
-    emit_stage_event(project_id, "stitching", "started", f"OpenCV: Stitching {len(image_paths)} flight frames into composite orthomosaic")
+    _emit("stitching", "started", f"OpenCV: Stitching {len(image_paths)} flight frames into composite orthomosaic")
     logger.info(f"Invoking Member 4 (OpenCV) on {len(image_paths)} images...")
     t0 = time.perf_counter()
     try:
@@ -60,15 +70,15 @@ def execute_pipeline(
         stitcher.stitch_image_list(image_paths, stitched_img_path)
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "stitching", duration_ms, "success")
-        emit_stage_event(project_id, "stitching", "done", "OpenCV: Orthomosaic stitched successfully")
+        _emit("stitching", "done", "OpenCV: Orthomosaic stitched successfully")
     except Exception as e:
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "stitching", duration_ms, "failure")
-        emit_stage_event(project_id, "stitching", "error", f"OpenCV stitching failed: {str(e)}")
+        _emit("stitching", "error", f"OpenCV stitching failed: {str(e)}")
         raise PipelineStageError("stitching", str(e))
 
     # Step 2: Member 5 — GIS EXIF Extraction
-    emit_stage_event(project_id, "gps_extraction", "started", "GIS: Extracting genuine EXIF GPS telemetry")
+    _emit("gps_extraction", "started", "GIS: Extracting genuine EXIF GPS telemetry")
     logger.info("Invoking Member 5 (GIS) for EXIF telemetry...")
     t0 = time.perf_counter()
     try:
@@ -80,30 +90,30 @@ def execute_pipeline(
                 break
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "GPS extraction", duration_ms, "success")
-        emit_stage_event(project_id, "gps_extraction", "done", f"GIS: Telemetry parsed (coordinate space: {gps_meta.get('coordinate_space', 'pixel')})")
+        _emit("gps_extraction", "done", f"GIS: Telemetry parsed (coordinate space: {gps_meta.get('coordinate_space', 'pixel')})")
     except Exception as e:
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "GPS extraction", duration_ms, "failure")
-        emit_stage_event(project_id, "gps_extraction", "error", f"GIS telemetry extraction failed: {str(e)}")
+        _emit("gps_extraction", "error", f"GIS telemetry extraction failed: {str(e)}")
         raise PipelineStageError("GPS extraction", str(e))
 
     # Step 3: Member 3 — AI Inference & Spectral Analysis
-    emit_stage_event(project_id, "inference", "started", "AI: Running 512x512 tile inference & VARI spectral analysis")
+    _emit("inference", "started", "AI: Running 512x512 tile inference & VARI spectral analysis")
     logger.info("Invoking Member 3 (AI) on stitched composite...")
     t0 = time.perf_counter()
     try:
         ai_results = run_inference(stitched_img_path, project_output_dir)
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "inference", duration_ms, "success")
-        emit_stage_event(project_id, "inference", "done", f"AI: Detected {len(ai_results.get('predictions', []))} parcels")
+        _emit("inference", "done", f"AI: Detected {len(ai_results.get('predictions', []))} parcels")
     except Exception as e:
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "inference", duration_ms, "failure")
-        emit_stage_event(project_id, "inference", "error", f"AI inference failed: {str(e)}")
+        _emit("inference", "error", f"AI inference failed: {str(e)}")
         raise PipelineStageError("inference", str(e))
 
     # Step 4: Member 5 — GIS GeoJSON Polygon Generation
-    emit_stage_event(project_id, "geojson", "started", "GIS: Generating RFC 7946 GeoJSON parcels")
+    _emit("geojson", "started", "GIS: Generating RFC 7946 GeoJSON parcels")
     logger.info("Invoking Member 5 (GIS) to generate GeoJSON...")
     t0 = time.perf_counter()
     try:
@@ -125,16 +135,17 @@ def execute_pipeline(
         )
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "GeoJSON generation", duration_ms, "success")
-        emit_stage_event(project_id, "geojson", "done", "GIS: GeoJSON generated successfully")
+        _emit("geojson", "done", "GIS: GeoJSON generated successfully")
     except Exception as e:
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "GeoJSON generation", duration_ms, "failure")
-        emit_stage_event(project_id, "geojson", "error", f"GIS GeoJSON generation failed: {str(e)}")
+        _emit("geojson", "error", f"GIS GeoJSON generation failed: {str(e)}")
         raise PipelineStageError("GeoJSON generation", str(e))
 
     detected_classes = list({p["class"] for p in ai_results.get("predictions", [])})
+    detected_count = len(ai_results.get("predictions", []))
 
-    emit_stage_event(project_id, "complete", "done", "Pipeline execution complete across OpenCV, AI, and GIS engines")
+    _emit("complete", "done", f"Pipeline completed successfully: {detected_count} parcels detected ({geojson_doc.get('coordinate_space', 'pixel')} space)")
 
     return {
         "status": "success",
