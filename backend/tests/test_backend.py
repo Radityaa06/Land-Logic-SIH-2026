@@ -249,6 +249,48 @@ class TestBackendModule(unittest.TestCase):
 
         asyncio.run(run_sse_test())
 
+    # Fix 3 Verification: SSE stream closes cleanly on completion without hanging
+    def test_sse_stream_closes_on_completion_concurrent(self):
+        import httpx
+        import json
+
+        proj_id = "test_sse_stream_close_run"
+
+        async def run_concurrent_sse():
+            events_received = []
+            stream_closed_cleanly = False
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                async def read_sse():
+                    nonlocal stream_closed_cleanly
+                    async with client.stream("GET", f"/api/v1/projects/{proj_id}/events", headers=self.auth_headers) as stream:
+                        async for line in stream.aiter_lines():
+                            if line.startswith("data: "):
+                                ev = json.loads(line[6:])
+                                events_received.append(ev)
+                    stream_closed_cleanly = True
+
+                async def trigger_predict():
+                    await asyncio.sleep(0.05)
+                    return await client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+
+                sse_task = asyncio.create_task(read_sse())
+                pred_task = asyncio.create_task(trigger_predict())
+
+                p_res = await pred_task
+                self.assertEqual(p_res.status_code, 200)
+
+                # Wait for SSE task to close with timeout to prove it doesn't hang
+                await asyncio.wait_for(sse_task, timeout=5.0)
+                self.assertTrue(stream_closed_cleanly, "SSE stream must close on pipeline completion rather than hanging")
+
+            stages = [e["stage"] for e in events_received]
+            self.assertIn("stitching", stages)
+            self.assertIn("complete", stages)
+            complete_ev = [e for e in events_received if e["stage"] == "complete"][0]
+            self.assertEqual(complete_ev["status"], "done")
+
+        asyncio.run(run_concurrent_sse())
+
     # Priority 4 Verification: File count cap (>60 images) returns 422
     def test_predict_exceeds_max_image_count_returns_422(self):
         files = [
@@ -300,6 +342,65 @@ class TestBackendModule(unittest.TestCase):
         # 5. Valid key returns key string
         res = asyncio.run(dep_verify_api_key(self.api_key))
         self.assertEqual(res, self.api_key)
+
+    # Fix 4 Verification: GET /projects/{id}/layers/parcels.geojson returns empty state before run and real data after run
+    def test_parcels_geojson_returns_empty_before_run_and_real_data_after_run(self):
+        import uuid
+        import shutil
+        proj_id = f"test_geojson_honest_empty_{uuid.uuid4().hex[:8]}"
+
+        try:
+            # 1. Before run: returns honest empty FeatureCollection with status=not_yet_generated
+            res_before = self.client.get(f"/api/v1/projects/{proj_id}/layers/parcels.geojson", headers=self.auth_headers)
+            self.assertEqual(res_before.status_code, 200)
+            data_before = res_before.json()
+            self.assertEqual(data_before["type"], "FeatureCollection")
+            self.assertEqual(data_before.get("status"), "not_yet_generated")
+            self.assertEqual(data_before.get("features"), [])
+            self.assertNotIn("parcel_01", str(data_before))
+
+            # 2. Run /predict for project
+            pred_res = self.client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+            self.assertEqual(pred_res.status_code, 200)
+
+            # 3. After run: returns real generated FeatureCollection
+            res_after = self.client.get(f"/api/v1/projects/{proj_id}/layers/parcels.geojson", headers=self.auth_headers)
+            self.assertEqual(res_after.status_code, 200)
+            data_after = res_after.json()
+            self.assertEqual(data_after["type"], "FeatureCollection")
+            self.assertIn("coordinate_space", data_after)
+            self.assertNotIn("not_yet_generated", data_after.get("status", ""))
+        finally:
+            out_dir = os.path.join("backend", "outputs", proj_id)
+            if os.path.exists(out_dir):
+                shutil.rmtree(out_dir, ignore_errors=True)
+
+    # Smaller Fix 1 Verification: verify_api_key is consolidated across dependencies.py and auth.py
+    def test_verify_api_key_consolidation(self):
+        from app.utils.auth import verify_api_key as auth_verify
+        from app.dependencies import verify_api_key as dep_verify
+        self.assertIs(auth_verify, dep_verify, "app.utils.auth must re-export the exact verify_api_key from dependencies.py")
+
+    # Smaller Fix 2 Verification: GET /events accepts API key via query parameter for browser EventSource
+    def test_events_auth_via_query_param(self):
+        from app.services.orchestrator import emit_stage_event
+        proj_id = "test_events_query_auth"
+
+        # Pre-seed a complete event so the stream closes immediately after verifying auth
+        emit_stage_event(proj_id, "complete", "done", "auth test setup")
+
+        # 1. Valid API key via query parameter (no headers) succeeds
+        res_ok = self.client.get(f"/api/v1/projects/{proj_id}/events?api_key={self.api_key}")
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertIn("complete", res_ok.text)
+
+        # 2. Invalid API key via query parameter returns 401
+        res_bad = self.client.get(f"/api/v1/projects/{proj_id}/events?api_key=wrong_key_123")
+        self.assertEqual(res_bad.status_code, 401)
+
+        # 3. Missing API key returns 401
+        res_missing = self.client.get(f"/api/v1/projects/{proj_id}/events")
+        self.assertEqual(res_missing.status_code, 401)
 
 
 if __name__ == "__main__":

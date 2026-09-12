@@ -20,15 +20,15 @@ from app.services.orchestrator import (
     subscribe_project_events,
     unsubscribe_project_events
 )
-from app.utils.auth import verify_api_key
+from app.dependencies import verify_api_key, verify_sse_api_key
 
-router = APIRouter(dependencies=[Depends(verify_api_key)])
+router = APIRouter()
 
 JOBS_DB = {}
 OUTPUT_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "outputs"))
 
 
-@router.post("/projects/{project_id}/pipeline/stitch", status_code=202)
+@router.post("/projects/{project_id}/pipeline/stitch", status_code=202, dependencies=[Depends(verify_api_key)])
 async def trigger_stitching(project_id: str, payload: StitchRequest, background_tasks: BackgroundTasks):
     job_id = f"job_{uuid.uuid4().hex[:8]}"
     job_record = {
@@ -48,14 +48,15 @@ async def trigger_stitching(project_id: str, payload: StitchRequest, background_
     return job_record
 
 
-@router.get("/jobs/{job_id}", response_model=JobStatusResponse)
+@router.get("/jobs/{job_id}", response_model=JobStatusResponse, dependencies=[Depends(verify_api_key)])
 async def get_job_status(job_id: str):
     if job_id not in JOBS_DB:
         raise HTTPException(status_code=404, detail="Job not found")
     return JOBS_DB[job_id]
 
 
-@router.get("/projects/{project_id}/events")
+# Native browser EventSource cannot send custom HTTP headers; accept key via header OR ?api_key= query param
+@router.get("/projects/{project_id}/events", dependencies=[Depends(verify_sse_api_key)])
 async def stream_project_events(project_id: str):
     """
     Server-Sent Events (SSE) endpoint streaming real-time stage transitions:
@@ -100,7 +101,7 @@ async def stream_project_events(project_id: str):
     )
 
 
-@router.get("/projects/{project_id}/layers/parcels.geojson")
+@router.get("/projects/{project_id}/layers/parcels.geojson", dependencies=[Depends(verify_api_key)])
 async def get_parcels_geojson(project_id: str):
     """
     Returns detected land parcels in RFC 7946 GeoJSON format.
@@ -112,32 +113,10 @@ async def get_parcels_geojson(project_id: str):
         with open(geojson_file, "r") as f:
             return json.load(f)
 
-    # Clean default in pixel space (no fake coordinates)
+    # Honest empty response before pipeline execution — never fabricate fake parcels
     return {
         "type": "FeatureCollection",
+        "status": "not_yet_generated",
         "coordinate_space": "pixel",
-        "features": [
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [100.0, 100.0],
-                            [450.0, 100.0],
-                            [450.0, 380.0],
-                            [100.0, 380.0],
-                            [100.0, 100.0]
-                        ]
-                    ]
-                },
-                "properties": {
-                    "parcel_id": "parcel_01",
-                    "class": "agricultural_land",
-                    "confidence": 0.94,
-                    "mean_vari": 0.76,
-                    "coordinate_space": "pixel"
-                }
-            }
-        ]
+        "features": []
     }

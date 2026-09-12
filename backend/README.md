@@ -61,7 +61,7 @@ backend/
 ## 🚀 Execution & Testing
 
 ```bash
-# Run backend unit tests (all 12 passing)
+# Run backend unit tests (all 20 passing)
 python3 -m unittest backend/tests/test_backend.py
 
 # Run FastAPI dev server
@@ -104,10 +104,11 @@ Interactive Swagger docs available at: `http://localhost:8000/docs`
   - Automatically closes the stream once stage reaches `complete` or `error`.
 
 ### Honest Architecture Disclosure
-`/predict` maintains a synchronous HTTP request-response flow to preserve compatibility with existing frontend UI contracts. However, to prevent judge-facing UI spinners during the 10-60s execution:
-1. `execute_pipeline()` runs off the main event loop inside Python's worker thread pool (`asyncio.to_thread`).
-2. Each stage transition publishes real events into the central `PROJECT_EVENTS` event bus in `orchestrator.py`.
-3. The frontend connects to `GET /api/v1/projects/{project_id}/events` to render live pipeline progress chips, while awaiting the final HTTP response. No linear fake percentages are emitted; statuses reflect actual milestone completions.
+1. **Unified `/predict` Coordinator Route**: The frontend calls `POST /predict` directly via `api.predictDirect()` to execute the end-to-end drone pipeline. `POST /projects/{id}/pipeline/stitch` and `/jobs/{id}` remain available as an asynchronous background alternative.
+2. **Real Event-Driven Progress Callback**: `execute_pipeline()` in `pipeline.py` receives a real `progress_callback` from `predict.py`. It emits real stage transitions (`stitching`, `gps_extraction`, `inference`, `geojson`, `complete`) directly as work begins and finishes. No fabricated percentages (e.g. 25%, 60%, 85%) are guessed ahead of time; progress is driven purely by actual stage milestones.
+3. **Browser EventSource Authentication**: Native browser `EventSource` cannot send custom HTTP headers like `X-API-Key`. To support native frontend streaming, `GET /api/v1/projects/{project_id}/events` accepts the key via either the `X-API-Key` header or the `?api_key=` query parameter, while strict header authentication remains enforced on all other routes.
+4. **Honest GeoJSON Fallback**: `GET /projects/{project_id}/layers/parcels.geojson` strictly avoids fabricated fake detection polygons. Prior to pipeline execution, it returns an honest empty `FeatureCollection` with `"status": "not_yet_generated"` and `"features": []`, safely activating the frontend map empty state.
+5. **Clean Stream Termination**: Connected SSE streams automatically break and close upon receiving `stage: complete` (or `status: error`), preventing hung connections.
 
 ---
 
