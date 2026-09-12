@@ -1,0 +1,1716 @@
+{
+  "type": "FeatureCollection",
+  "coordinate_space": "pixel",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              43.0
+            ],
+            [
+              299.0,
+              43.0
+            ],
+            [
+              299.0,
+              51.0
+            ],
+            [
+              40.0,
+              51.0
+            ],
+            [
+              40.0,
+              43.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_01",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              55.0
+            ],
+            [
+              299.0,
+              55.0
+            ],
+            [
+              299.0,
+              63.0
+            ],
+            [
+              40.0,
+              63.0
+            ],
+            [
+              40.0,
+              55.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_02",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              67.0
+            ],
+            [
+              299.0,
+              67.0
+            ],
+            [
+              299.0,
+              75.0
+            ],
+            [
+              40.0,
+              75.0
+            ],
+            [
+              40.0,
+              67.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_03",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              79.0
+            ],
+            [
+              299.0,
+              79.0
+            ],
+            [
+              299.0,
+              87.0
+            ],
+            [
+              40.0,
+              87.0
+            ],
+            [
+              40.0,
+              79.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_04",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              91.0
+            ],
+            [
+              299.0,
+              91.0
+            ],
+            [
+              299.0,
+              99.0
+            ],
+            [
+              40.0,
+              99.0
+            ],
+            [
+              40.0,
+              91.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_05",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              103.0
+            ],
+            [
+              299.0,
+              103.0
+            ],
+            [
+              299.0,
+              111.0
+            ],
+            [
+              40.0,
+              111.0
+            ],
+            [
+              40.0,
+              103.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_06",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              115.0
+            ],
+            [
+              299.0,
+              115.0
+            ],
+            [
+              299.0,
+              123.0
+            ],
+            [
+              40.0,
+              123.0
+            ],
+            [
+              40.0,
+              115.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_07",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              127.0
+            ],
+            [
+              299.0,
+              127.0
+            ],
+            [
+              299.0,
+              135.0
+            ],
+            [
+              40.0,
+              135.0
+            ],
+            [
+              40.0,
+              127.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_08",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              139.0
+            ],
+            [
+              299.0,
+              139.0
+            ],
+            [
+              299.0,
+              147.0
+            ],
+            [
+              40.0,
+              147.0
+            ],
+            [
+              40.0,
+              139.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_09",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              151.0
+            ],
+            [
+              299.0,
+              151.0
+            ],
+            [
+              299.0,
+              159.0
+            ],
+            [
+              40.0,
+              159.0
+            ],
+            [
+              40.0,
+              151.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_10",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              163.0
+            ],
+            [
+              299.0,
+              163.0
+            ],
+            [
+              299.0,
+              171.0
+            ],
+            [
+              40.0,
+              171.0
+            ],
+            [
+              40.0,
+              163.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_11",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              175.0
+            ],
+            [
+              299.0,
+              175.0
+            ],
+            [
+              299.0,
+              183.0
+            ],
+            [
+              40.0,
+              183.0
+            ],
+            [
+              40.0,
+              175.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_12",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              187.0
+            ],
+            [
+              299.0,
+              187.0
+            ],
+            [
+              299.0,
+              195.0
+            ],
+            [
+              40.0,
+              195.0
+            ],
+            [
+              40.0,
+              187.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_13",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              199.0
+            ],
+            [
+              299.0,
+              199.0
+            ],
+            [
+              299.0,
+              207.0
+            ],
+            [
+              40.0,
+              207.0
+            ],
+            [
+              40.0,
+              199.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_14",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              211.0
+            ],
+            [
+              299.0,
+              211.0
+            ],
+            [
+              299.0,
+              219.0
+            ],
+            [
+              40.0,
+              219.0
+            ],
+            [
+              40.0,
+              211.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_15",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              223.0
+            ],
+            [
+              299.0,
+              223.0
+            ],
+            [
+              299.0,
+              231.0
+            ],
+            [
+              40.0,
+              231.0
+            ],
+            [
+              40.0,
+              223.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_16",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              235.0
+            ],
+            [
+              299.0,
+              235.0
+            ],
+            [
+              299.0,
+              243.0
+            ],
+            [
+              40.0,
+              243.0
+            ],
+            [
+              40.0,
+              235.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_17",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              247.0
+            ],
+            [
+              299.0,
+              247.0
+            ],
+            [
+              299.0,
+              255.0
+            ],
+            [
+              40.0,
+              255.0
+            ],
+            [
+              40.0,
+              247.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_18",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              259.0
+            ],
+            [
+              299.0,
+              259.0
+            ],
+            [
+              299.0,
+              267.0
+            ],
+            [
+              40.0,
+              267.0
+            ],
+            [
+              40.0,
+              259.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_19",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              271.0
+            ],
+            [
+              299.0,
+              271.0
+            ],
+            [
+              299.0,
+              279.0
+            ],
+            [
+              40.0,
+              279.0
+            ],
+            [
+              40.0,
+              271.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_20",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.742,
+        "pixel_area": 2340,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              340.0
+            ],
+            [
+              299.0,
+              340.0
+            ],
+            [
+              299.0,
+              579.0
+            ],
+            [
+              40.0,
+              579.0
+            ],
+            [
+              40.0,
+              340.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_21",
+        "class": "agricultural_land",
+        "confidence": 0.95,
+        "mean_vari": 0.708,
+        "pixel_area": 62400,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              639.0,
+              0.0
+            ],
+            [
+              639.0,
+              639.0
+            ],
+            [
+              0.0,
+              639.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_22",
+        "class": "barren_soil",
+        "confidence": 0.82,
+        "mean_vari": -0.194,
+        "pixel_area": 201200,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              40.0
+            ],
+            [
+              299.0,
+              40.0
+            ],
+            [
+              299.0,
+              42.0
+            ],
+            [
+              40.0,
+              42.0
+            ],
+            [
+              40.0,
+              40.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_23",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              360.0,
+              40.0
+            ],
+            [
+              599.0,
+              40.0
+            ],
+            [
+              599.0,
+              279.0
+            ],
+            [
+              360.0,
+              279.0
+            ],
+            [
+              360.0,
+              40.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_24",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.769,
+        "pixel_area": 57600,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              52.0
+            ],
+            [
+              299.0,
+              52.0
+            ],
+            [
+              299.0,
+              54.0
+            ],
+            [
+              40.0,
+              54.0
+            ],
+            [
+              40.0,
+              52.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_25",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              64.0
+            ],
+            [
+              299.0,
+              64.0
+            ],
+            [
+              299.0,
+              66.0
+            ],
+            [
+              40.0,
+              66.0
+            ],
+            [
+              40.0,
+              64.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_26",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              76.0
+            ],
+            [
+              299.0,
+              76.0
+            ],
+            [
+              299.0,
+              78.0
+            ],
+            [
+              40.0,
+              78.0
+            ],
+            [
+              40.0,
+              76.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_27",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              88.0
+            ],
+            [
+              299.0,
+              88.0
+            ],
+            [
+              299.0,
+              90.0
+            ],
+            [
+              40.0,
+              90.0
+            ],
+            [
+              40.0,
+              88.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_28",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              100.0
+            ],
+            [
+              299.0,
+              100.0
+            ],
+            [
+              299.0,
+              102.0
+            ],
+            [
+              40.0,
+              102.0
+            ],
+            [
+              40.0,
+              100.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_29",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              112.0
+            ],
+            [
+              299.0,
+              112.0
+            ],
+            [
+              299.0,
+              114.0
+            ],
+            [
+              40.0,
+              114.0
+            ],
+            [
+              40.0,
+              112.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_30",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              124.0
+            ],
+            [
+              299.0,
+              124.0
+            ],
+            [
+              299.0,
+              126.0
+            ],
+            [
+              40.0,
+              126.0
+            ],
+            [
+              40.0,
+              124.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_31",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              136.0
+            ],
+            [
+              299.0,
+              136.0
+            ],
+            [
+              299.0,
+              138.0
+            ],
+            [
+              40.0,
+              138.0
+            ],
+            [
+              40.0,
+              136.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_32",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              148.0
+            ],
+            [
+              299.0,
+              148.0
+            ],
+            [
+              299.0,
+              150.0
+            ],
+            [
+              40.0,
+              150.0
+            ],
+            [
+              40.0,
+              148.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_33",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              160.0
+            ],
+            [
+              299.0,
+              160.0
+            ],
+            [
+              299.0,
+              162.0
+            ],
+            [
+              40.0,
+              162.0
+            ],
+            [
+              40.0,
+              160.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_34",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              172.0
+            ],
+            [
+              299.0,
+              172.0
+            ],
+            [
+              299.0,
+              174.0
+            ],
+            [
+              40.0,
+              174.0
+            ],
+            [
+              40.0,
+              172.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_35",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              184.0
+            ],
+            [
+              299.0,
+              184.0
+            ],
+            [
+              299.0,
+              186.0
+            ],
+            [
+              40.0,
+              186.0
+            ],
+            [
+              40.0,
+              184.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_36",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              196.0
+            ],
+            [
+              299.0,
+              196.0
+            ],
+            [
+              299.0,
+              198.0
+            ],
+            [
+              40.0,
+              198.0
+            ],
+            [
+              40.0,
+              196.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_37",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              208.0
+            ],
+            [
+              299.0,
+              208.0
+            ],
+            [
+              299.0,
+              210.0
+            ],
+            [
+              40.0,
+              210.0
+            ],
+            [
+              40.0,
+              208.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_38",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              220.0
+            ],
+            [
+              299.0,
+              220.0
+            ],
+            [
+              299.0,
+              222.0
+            ],
+            [
+              40.0,
+              222.0
+            ],
+            [
+              40.0,
+              220.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_39",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              232.0
+            ],
+            [
+              299.0,
+              232.0
+            ],
+            [
+              299.0,
+              234.0
+            ],
+            [
+              40.0,
+              234.0
+            ],
+            [
+              40.0,
+              232.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_40",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              244.0
+            ],
+            [
+              299.0,
+              244.0
+            ],
+            [
+              299.0,
+              246.0
+            ],
+            [
+              40.0,
+              246.0
+            ],
+            [
+              40.0,
+              244.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_41",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              256.0
+            ],
+            [
+              299.0,
+              256.0
+            ],
+            [
+              299.0,
+              258.0
+            ],
+            [
+              40.0,
+              258.0
+            ],
+            [
+              40.0,
+              256.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_42",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              40.0,
+              268.0
+            ],
+            [
+              299.0,
+              268.0
+            ],
+            [
+              299.0,
+              270.0
+            ],
+            [
+              40.0,
+              270.0
+            ],
+            [
+              40.0,
+              268.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_43",
+        "class": "forests",
+        "confidence": 0.9,
+        "mean_vari": 0.76,
+        "pixel_area": 780,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              360.0,
+              340.0
+            ],
+            [
+              499.0,
+              340.0
+            ],
+            [
+              499.0,
+              479.0
+            ],
+            [
+              360.0,
+              479.0
+            ],
+            [
+              360.0,
+              340.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_44",
+        "class": "water_bodies",
+        "confidence": 0.9,
+        "mean_vari": -1.0,
+        "pixel_area": 19600,
+        "coordinate_space": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              520.0,
+              520.0
+            ],
+            [
+              599.0,
+              520.0
+            ],
+            [
+              599.0,
+              599.0
+            ],
+            [
+              520.0,
+              599.0
+            ],
+            [
+              520.0,
+              520.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "parcel_id": "parcel_45",
+        "class": "man_made_structures",
+        "confidence": 0.9,
+        "mean_vari": 0.0,
+        "pixel_area": 6400,
+        "coordinate_space": "pixel"
+      }
+    }
+  ]
+}

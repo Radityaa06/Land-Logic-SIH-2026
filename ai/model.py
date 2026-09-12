@@ -9,7 +9,8 @@ Does NOT invent fake weights or download arbitrary checkpoints without specifica
 """
 
 import os
-from typing import Dict, List, Optional, Any
+import threading
+from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 
 # Canonical land classification categories specified by project
@@ -88,3 +89,38 @@ class LandSegmentationModel:
         mask[mask == 0] = 1
 
         return mask
+
+
+# Thread-safe model cache to prevent reloading model weights on every request
+_MODEL_CACHE: Dict[Tuple[Optional[str], str], LandSegmentationModel] = {}
+_CACHE_LOCK = threading.Lock()
+
+
+def get_segmentation_model(
+    checkpoint_path: Optional[str] = None,
+    device: str = "cpu",
+    force_reload: bool = False
+) -> LandSegmentationModel:
+    """
+    Returns a cached LandSegmentationModel instance.
+    Loads once at startup or first request, rather than reloading per request.
+    """
+    cache_key = (checkpoint_path, device)
+    with _CACHE_LOCK:
+        if force_reload or cache_key not in _MODEL_CACHE:
+            _MODEL_CACHE[cache_key] = LandSegmentationModel(
+                checkpoint_path=checkpoint_path,
+                device=device
+            )
+        return _MODEL_CACHE[cache_key]
+
+
+def clear_model_cache() -> None:
+    """Clears cached model instances (primarily for testing)."""
+    with _CACHE_LOCK:
+        _MODEL_CACHE.clear()
+
+
+# Pre-warm default model instance at module import
+_DEFAULT_MODEL = get_segmentation_model()
+
