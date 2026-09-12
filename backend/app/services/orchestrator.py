@@ -71,17 +71,11 @@ async def run_full_pipeline(project_id: str, job_id: str, jobs_db: dict):
     1. OpenCV Orthomosaic Stitching (Member 4)
     2. AI Semantic Land & Crop Health Segmentation (Member 3)
     3. GIS Georeferencing & Vector GeoJSON Generation (Member 5)
+    Drives job status and SSE updates via real event callbacks — no fabricated percentages.
     """
     from app.services.pipeline import execute_pipeline
 
     try:
-        jobs_db[job_id]["stage"] = "OPENCV_STITCHING"
-        jobs_db[job_id]["status"] = "PROCESSING"
-        jobs_db[job_id]["progress_pct"] = 25.0
-        jobs_db[job_id]["message"] = "OpenCV: Extracting SIFT keypoints & computing homography matrices"
-        jobs_db[job_id]["updated_at"] = datetime.utcnow()
-        emit_stage_event(project_id, "stitching", "started", "OpenCV: Extracting SIFT keypoints & computing homography matrices")
-
         # Gather images for project
         project_dir = os.path.join(UPLOAD_BASE_DIR, project_id)
         image_paths = []
@@ -90,24 +84,25 @@ async def run_full_pipeline(project_id: str, job_id: str, jobs_db: dict):
                 if f.lower().endswith((".jpg", ".jpeg", ".png", ".dng", ".tiff")):
                     image_paths.append(os.path.join(project_dir, f))
 
-        jobs_db[job_id]["stage"] = "AI_SEGMENTATION"
-        jobs_db[job_id]["progress_pct"] = 60.0
-        jobs_db[job_id]["message"] = "AI Engine: Running 512x512 tile inference & VARI spectral analysis"
-        jobs_db[job_id]["updated_at"] = datetime.utcnow()
+        def orchestrator_progress_callback(p_id: str, stage: str, status: str, message: str) -> None:
+            emit_stage_event(p_id, stage, status, message)
+            if job_id in jobs_db:
+                jobs_db[job_id]["stage"] = stage.upper()
+                jobs_db[job_id]["status"] = "PROCESSING" if status in ("started", "done") and stage != "complete" else ("COMPLETED" if stage == "complete" else "FAILED")
+                jobs_db[job_id]["message"] = message
+                jobs_db[job_id]["updated_at"] = datetime.utcnow()
 
-        jobs_db[job_id]["stage"] = "GIS_GEOREFERENCING"
-        jobs_db[job_id]["progress_pct"] = 85.0
-        jobs_db[job_id]["message"] = "GIS: Georeferencing telemetry & generating RFC 7946 GeoJSON parcels"
-        jobs_db[job_id]["updated_at"] = datetime.utcnow()
+        # Execute blocking pipeline in worker thread with live stage transition callback
+        result = await asyncio.to_thread(
+            execute_pipeline, project_id, image_paths, OUTPUT_BASE_DIR, orchestrator_progress_callback
+        )
 
-        # Execute blocking pipeline in worker thread to prevent event loop starvation
-        result = await asyncio.to_thread(execute_pipeline, project_id, image_paths, OUTPUT_BASE_DIR)
-
-        # Finalize
+        # Finalize on genuine completion
+        detected_count = result.get("summary", {}).get("detected_parcels", 0)
         jobs_db[job_id]["stage"] = "COMPLETE"
         jobs_db[job_id]["status"] = "COMPLETED"
         jobs_db[job_id]["progress_pct"] = 100.0
-        jobs_db[job_id]["message"] = "Pipeline completed successfully. Layers ready for visualization."
+        jobs_db[job_id]["message"] = f"Pipeline completed successfully: {detected_count} parcels detected"
         jobs_db[job_id]["updated_at"] = datetime.utcnow()
         jobs_db[job_id]["result_summary"] = result.get("summary")
 
