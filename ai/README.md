@@ -106,9 +106,29 @@ result = run_inference(
 
 ---
 
+## 📂 Directory Structure
+
+```text
+ai/
+├── model.py              # Land segmentation classes and model loading interface
+├── inference.py          # Top-level inference runner coordinating tiling, model & postprocess
+├── tiling.py             # Sliding-window chip generation and mask reconstruction
+├── postprocess.py        # VARI index computation & parcel contour discovery
+├── scripts/
+│   └── predict_cli.py    # Standalone CLI entrypoint with argument parsing
+├── tests/
+│   └── test_ai.py        # Unit test suite for AI components
+├── models/               # Model checkpoints directory (.gitkeep)
+├── requirements.txt      # AI dependencies
+└── README.md
+```
+
+---
+
 ## 📊 Performance & Benchmark Status
 
 - **Model Execution**: Operating on the calibrated spectral segmentation engine when checkpoints are not loaded.
+- **Real Trained Classifier**: Not yet built, requires labeled dataset — currently using RGB-heuristic fallback, disclosed above.
 - **Inference Speed & Accuracy (mIoU)**: **Not yet benchmarked** on full flight datasets. Benchmarking will be performed once dedicated test flight orthomosaics are cataloged.
 
 ---
@@ -121,5 +141,9 @@ python -m unittest ai/tests/test_ai.py -v
 
 # Run backend cross-module pipeline tests
 python -m unittest backend/tests/test_backend.py -v
+
+# Run CLI entrypoint test
+python ai/scripts/predict_cli.py
 ```
+
 
