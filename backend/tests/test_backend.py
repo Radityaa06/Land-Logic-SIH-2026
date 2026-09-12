@@ -345,28 +345,62 @@ class TestBackendModule(unittest.TestCase):
 
     # Fix 4 Verification: GET /projects/{id}/layers/parcels.geojson returns empty state before run and real data after run
     def test_parcels_geojson_returns_empty_before_run_and_real_data_after_run(self):
-        proj_id = "test_geojson_honest_empty"
+        import uuid
+        import shutil
+        proj_id = f"test_geojson_honest_empty_{uuid.uuid4().hex[:8]}"
 
-        # 1. Before run: returns honest empty FeatureCollection with status=not_yet_generated
-        res_before = self.client.get(f"/api/v1/projects/{proj_id}/layers/parcels.geojson", headers=self.auth_headers)
-        self.assertEqual(res_before.status_code, 200)
-        data_before = res_before.json()
-        self.assertEqual(data_before["type"], "FeatureCollection")
-        self.assertEqual(data_before.get("status"), "not_yet_generated")
-        self.assertEqual(data_before.get("features"), [])
-        self.assertNotIn("parcel_01", str(data_before))
+        try:
+            # 1. Before run: returns honest empty FeatureCollection with status=not_yet_generated
+            res_before = self.client.get(f"/api/v1/projects/{proj_id}/layers/parcels.geojson", headers=self.auth_headers)
+            self.assertEqual(res_before.status_code, 200)
+            data_before = res_before.json()
+            self.assertEqual(data_before["type"], "FeatureCollection")
+            self.assertEqual(data_before.get("status"), "not_yet_generated")
+            self.assertEqual(data_before.get("features"), [])
+            self.assertNotIn("parcel_01", str(data_before))
 
-        # 2. Run /predict for project
-        pred_res = self.client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
-        self.assertEqual(pred_res.status_code, 200)
+            # 2. Run /predict for project
+            pred_res = self.client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+            self.assertEqual(pred_res.status_code, 200)
 
-        # 3. After run: returns real generated FeatureCollection
-        res_after = self.client.get(f"/api/v1/projects/{proj_id}/layers/parcels.geojson", headers=self.auth_headers)
-        self.assertEqual(res_after.status_code, 200)
-        data_after = res_after.json()
-        self.assertEqual(data_after["type"], "FeatureCollection")
-        self.assertIn("coordinate_space", data_after)
-        self.assertNotIn("not_yet_generated", data_after.get("status", ""))
+            # 3. After run: returns real generated FeatureCollection
+            res_after = self.client.get(f"/api/v1/projects/{proj_id}/layers/parcels.geojson", headers=self.auth_headers)
+            self.assertEqual(res_after.status_code, 200)
+            data_after = res_after.json()
+            self.assertEqual(data_after["type"], "FeatureCollection")
+            self.assertIn("coordinate_space", data_after)
+            self.assertNotIn("not_yet_generated", data_after.get("status", ""))
+        finally:
+            out_dir = os.path.join("backend", "outputs", proj_id)
+            if os.path.exists(out_dir):
+                shutil.rmtree(out_dir, ignore_errors=True)
+
+    # Smaller Fix 1 Verification: verify_api_key is consolidated across dependencies.py and auth.py
+    def test_verify_api_key_consolidation(self):
+        from app.utils.auth import verify_api_key as auth_verify
+        from app.dependencies import verify_api_key as dep_verify
+        self.assertIs(auth_verify, dep_verify, "app.utils.auth must re-export the exact verify_api_key from dependencies.py")
+
+    # Smaller Fix 2 Verification: GET /events accepts API key via query parameter for browser EventSource
+    def test_events_auth_via_query_param(self):
+        from app.services.orchestrator import emit_stage_event
+        proj_id = "test_events_query_auth"
+
+        # Pre-seed a complete event so the stream closes immediately after verifying auth
+        emit_stage_event(proj_id, "complete", "done", "auth test setup")
+
+        # 1. Valid API key via query parameter (no headers) succeeds
+        res_ok = self.client.get(f"/api/v1/projects/{proj_id}/events?api_key={self.api_key}")
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertIn("complete", res_ok.text)
+
+        # 2. Invalid API key via query parameter returns 401
+        res_bad = self.client.get(f"/api/v1/projects/{proj_id}/events?api_key=wrong_key_123")
+        self.assertEqual(res_bad.status_code, 401)
+
+        # 3. Missing API key returns 401
+        res_missing = self.client.get(f"/api/v1/projects/{proj_id}/events")
+        self.assertEqual(res_missing.status_code, 401)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ import os
 import secrets
 import asyncio
 from typing import Optional
-from fastapi import Security, HTTPException, status
+from fastapi import Security, HTTPException, status, Query
 from fastapi.security import APIKeyHeader
 
 from app.utils.logger import logger
@@ -55,6 +55,19 @@ async def verify_api_key(api_key: Optional[str] = Security(API_KEY_HEADER)) -> s
         )
 
     return api_key
+
+
+async def verify_sse_api_key(
+    api_key_header: Optional[str] = Security(API_KEY_HEADER),
+    api_key: Optional[str] = Query(None, alias="api_key")
+) -> str:
+    """
+    Validates API key for Server-Sent Events (SSE) endpoints.
+    Native browser EventSource cannot send custom HTTP headers, so this route
+    accepts the API key via either 'X-API-Key' header or '?api_key=' query parameter.
+    """
+    token = api_key_header or api_key
+    return await verify_api_key(token)
 
 
 class ConcurrencyGuard:
