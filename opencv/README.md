@@ -25,10 +25,10 @@ opencv/
 ├── matching.py           # k-NN matching & RANSAC homography estimation
 ├── blending.py           # Feather blending & seam smoothing
 ├── stitching.py          # DroneStitcher orchestration engine
+├── scripts/
+│   └── stitch_cli.py     # Standalone CLI entrypoint for drone stitching
 ├── tests/
 │   └── test_opencv.py    # Unit test suite for OpenCV routines
-├── stitching/
-│   └── stitcher.py       # Backward-compatibility wrapper
 ├── preprocessing/
 │   └── color_correction.py # Backward-compatibility wrapper
 ├── requirements.txt      # OpenCV dependencies
@@ -43,6 +43,7 @@ opencv/
 # Run unit tests
 python3 -m unittest opencv/tests/test_opencv.py
 
-# Run standalone stitcher
-python3 -m opencv.stitching
+# Run standalone stitcher CLI
+python3 opencv/scripts/stitch_cli.py
 ```
+
