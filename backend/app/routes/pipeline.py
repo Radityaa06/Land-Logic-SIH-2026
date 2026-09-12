@@ -112,32 +112,10 @@ async def get_parcels_geojson(project_id: str):
         with open(geojson_file, "r") as f:
             return json.load(f)
 
-    # Clean default in pixel space (no fake coordinates)
+    # Honest empty response before pipeline execution — never fabricate fake parcels
     return {
         "type": "FeatureCollection",
+        "status": "not_yet_generated",
         "coordinate_space": "pixel",
-        "features": [
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [100.0, 100.0],
-                            [450.0, 100.0],
-                            [450.0, 380.0],
-                            [100.0, 380.0],
-                            [100.0, 100.0]
-                        ]
-                    ]
-                },
-                "properties": {
-                    "parcel_id": "parcel_01",
-                    "class": "agricultural_land",
-                    "confidence": 0.94,
-                    "mean_vari": 0.76,
-                    "coordinate_space": "pixel"
-                }
-            }
-        ]
+        "features": []
     }

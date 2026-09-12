@@ -343,6 +343,31 @@ class TestBackendModule(unittest.TestCase):
         res = asyncio.run(dep_verify_api_key(self.api_key))
         self.assertEqual(res, self.api_key)
 
+    # Fix 4 Verification: GET /projects/{id}/layers/parcels.geojson returns empty state before run and real data after run
+    def test_parcels_geojson_returns_empty_before_run_and_real_data_after_run(self):
+        proj_id = "test_geojson_honest_empty"
+
+        # 1. Before run: returns honest empty FeatureCollection with status=not_yet_generated
+        res_before = self.client.get(f"/api/v1/projects/{proj_id}/layers/parcels.geojson", headers=self.auth_headers)
+        self.assertEqual(res_before.status_code, 200)
+        data_before = res_before.json()
+        self.assertEqual(data_before["type"], "FeatureCollection")
+        self.assertEqual(data_before.get("status"), "not_yet_generated")
+        self.assertEqual(data_before.get("features"), [])
+        self.assertNotIn("parcel_01", str(data_before))
+
+        # 2. Run /predict for project
+        pred_res = self.client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+        self.assertEqual(pred_res.status_code, 200)
+
+        # 3. After run: returns real generated FeatureCollection
+        res_after = self.client.get(f"/api/v1/projects/{proj_id}/layers/parcels.geojson", headers=self.auth_headers)
+        self.assertEqual(res_after.status_code, 200)
+        data_after = res_after.json()
+        self.assertEqual(data_after["type"], "FeatureCollection")
+        self.assertIn("coordinate_space", data_after)
+        self.assertNotIn("not_yet_generated", data_after.get("status", ""))
+
 
 if __name__ == "__main__":
     unittest.main()
