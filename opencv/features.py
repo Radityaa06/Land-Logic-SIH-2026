@@ -43,4 +43,5 @@ class FeatureExtractor:
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
         keypoints, descriptors = self.detector.detectAndCompute(gray, None)
-        return keypoints, descriptors
+        return list(keypoints), descriptors
+
