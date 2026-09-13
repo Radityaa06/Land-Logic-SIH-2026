@@ -24,8 +24,15 @@ if sys.platform == "win32":
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8")
 
-sys.path.insert(0, os.path.abspath("backend"))
-sys.path.insert(0, os.path.abspath("."))
+from pathlib import Path
+
+# Anchored to file location so tests pass regardless of the invoking working directory
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_DIR = REPO_ROOT / "backend"
+SAMPLE_IMAGES_DIR = REPO_ROOT / "shared" / "sample_images"
+
+sys.path.insert(0, str(BACKEND_DIR))
+sys.path.insert(0, str(REPO_ROOT))
 
 from app.main import app
 from app.services.pipeline import execute_pipeline
@@ -42,8 +49,8 @@ def _make_valid_png_bytes(w: int = 10, h: int = 10) -> bytes:
 
 def _get_sample_image_files():
     """Returns file tuples for real overlapping sample images."""
-    p1 = os.path.abspath("shared/sample_images/frame_01.png")
-    p2 = os.path.abspath("shared/sample_images/frame_02.png")
+    p1 = SAMPLE_IMAGES_DIR / "frame_01.png"
+    p2 = SAMPLE_IMAGES_DIR / "frame_02.png"
     with open(p1, "rb") as f1, open(p2, "rb") as f2:
         b1 = f1.read()
         b2 = f2.read()
@@ -151,11 +158,14 @@ class TestBackendModule(unittest.TestCase):
 
     # Core pipeline execution test
     def test_pipeline_execution_direct(self):
-        outputs_dir = "backend/outputs/test_run"
+        outputs_dir = str(BACKEND_DIR / "outputs" / "test_run")
         res = execute_pipeline(
             project_id="test_run",
-            image_paths=["shared/sample_images/frame_01.png", "shared/sample_images/frame_02.png"],
-            outputs_base_dir="backend/outputs"
+            image_paths=[
+                str(SAMPLE_IMAGES_DIR / "frame_01.png"),
+                str(SAMPLE_IMAGES_DIR / "frame_02.png"),
+            ],
+            outputs_base_dir=str(BACKEND_DIR / "outputs")
         )
         self.assertEqual(res["status"], "success")
         self.assertIn(res["coordinate_space"], ["geographic", "pixel"])
@@ -398,7 +408,7 @@ class TestBackendModule(unittest.TestCase):
             self.assertIn("coordinate_space", data_after)
             self.assertNotIn("not_yet_generated", data_after.get("status", ""))
         finally:
-            out_dir = os.path.join("backend", "outputs", proj_id)
+            out_dir = str(BACKEND_DIR / "outputs" / proj_id)
             if os.path.exists(out_dir):
                 shutil.rmtree(out_dir, ignore_errors=True)
 
@@ -426,13 +436,13 @@ class TestBackendModule(unittest.TestCase):
         self.assertIn("artifacts", data)
         self.assertIn("stitched_image_url", data["artifacts"])
 
-        stitched_disk_path = os.path.join("backend", "outputs", proj_id, "stitched_orthomosaic.png")
+        stitched_disk_path = str(BACKEND_DIR / "outputs" / proj_id / "stitched_orthomosaic.png")
         self.assertTrue(os.path.exists(stitched_disk_path), f"Artifact missing on disk: {stitched_disk_path}")
         self.assertGreater(os.path.getsize(stitched_disk_path), 0, "Artifact file is empty")
 
         # Cleanup test artifacts
-        shutil.rmtree(os.path.join("backend", "outputs", proj_id), ignore_errors=True)
-        shutil.rmtree(os.path.join("backend", "uploads", proj_id), ignore_errors=True)
+        shutil.rmtree(str(BACKEND_DIR / "outputs" / proj_id), ignore_errors=True)
+        shutil.rmtree(str(BACKEND_DIR / "uploads" / proj_id), ignore_errors=True)
 
     # Smaller Fix 1 Verification: verify_api_key is consolidated across dependencies.py and auth.py
     def test_verify_api_key_consolidation(self):
