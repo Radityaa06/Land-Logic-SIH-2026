@@ -92,7 +92,10 @@ class DroneStitcher:
             except (AttributeError, cv2.error):
                 pass
 
-        status, composite = stitcher.stitch(images)
+        try:
+            status, composite = stitcher.stitch(images)
+        except cv2.error as e:
+            raise RuntimeError(f"Orthomosaic stitching crashed inside OpenCV: {str(e).strip()}")
         if status != cv2.Stitcher_OK:
             status_messages = {
                 1: "Insufficient visual feature overlap between frames to estimate alignment (ERR_NEED_MORE_IMGS). Ensure flight frames have >=60% overlap.",

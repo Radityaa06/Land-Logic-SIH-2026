@@ -10,10 +10,11 @@
 ## 🎯 Scope & Responsibilities
 1. **Input Robustness & Auditing**: Validates all incoming flight frames, catches corrupted/empty files, checks blur (Laplacian variance) and brightness boundaries.
 2. **Preprocessing & EXIF Orientation**: Normalizes orientation across drone gimbal shifts (`correct_exif_orientation`) and balances flight strip illumination using CLAHE on the L-channel in LAB color space (`balance_exposure`).
-3. **Feature Extraction**: Extracts scale-invariant local keypoints and descriptors using **SIFT** (default per `StitchRequest`) with ORB fallback (`opencv/features.py`).
-4. **Feature Matching & Homography**: Pairwise k-NN matching (Lowe's ratio threshold = 0.75) and RANSAC homography matrix estimation (`opencv/matching.py`).
-5. **Seamline Blending**: Multi-band blending and feather smoothing to remove seams between overlapping flight strips (`opencv/blending.py`).
-6. **Global Orthomosaic Stitching**: Orchestrates registration and composite generation (`DroneStitcher` in `opencv/stitching.py`).
+3. **Global Orthomosaic Stitching**: Orchestrates registration and composite generation (`DroneStitcher` in `opencv/stitching.py`) delegating to `cv2.Stitcher_create(cv2.Stitcher_SCANS)`.
+
+> [!NOTE]
+> **Standalone Modules (`features.py`, `matching.py`, `blending.py`)**:
+> `DroneStitcher.stitch_image_list()` delegates feature extraction, pairwise matching, homography estimation, and seam blending entirely to `cv2.Stitcher`'s internal C++ implementation. The modules `opencv/features.py` (SIFT/ORB detection), `opencv/matching.py` (k-NN matching, Lowe's ratio test, RANSAC homography), and `opencv/blending.py` (feather and multiband seam smoothing) are standalone, independently unit-tested components that are **not** wired into the default `stitch_image_list()` execution path. They are maintained for standalone utilities, debugging registration failures frame-pair-by-pair, and future manual pipeline customization (see *Architecture Roadmap* below).
 
 ---
 
@@ -41,6 +42,7 @@ The stitching pipeline implements strict, catchable exception semantics for Memb
   - `ERR_NEED_MORE_IMGS` (1): Insufficient feature overlap between flight frames.
   - `ERR_HOMOGRAPHY_EST_FAIL` (2): RANSAC could not find a geometrically consistent affine transformation.
   - `ERR_CAMERA_PARAMS_ADJUST_FAIL` (3): Camera bundle adjustment optimization failed.
+- **C++ Crash Protection**: Raw `cv2.error` assertions thrown by `stitcher.stitch()` on pathological inputs are caught and re-raised as `RuntimeError("Orthomosaic stitching crashed inside OpenCV: ...")`, ensuring clean, readable error reporting instead of unhandled stack traces.
 - **EXIF Normalization**: Every image automatically has its EXIF orientation tag corrected before feature detection.
 - **Feature Detector Alignment**: `DroneStitcher` explicitly sets its features finder to **SIFT** (`cv2.SIFT_create()`), matching `StitchRequest.feature_detector = "SIFT"` in `backend/app/models/schemas.py`.
 

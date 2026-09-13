@@ -147,6 +147,23 @@ class TestOpenCVModule(unittest.TestCase):
                 # Verify non-degenerate output (variance across image pixels > 50)
                 self.assertGreater(float(np.var(img)), 50.0)
 
+    def test_robustness_cv2_error_crash(self):
+        """Forces cv2.error inside stitcher.stitch() and asserts a clean RuntimeError, not an unhandled cv2.error."""
+        if cv2 is None:
+            self.skipTest("cv2 is required for testing OpenCV crash catching")
+        degen1 = os.path.join(self.test_dir, "degen1.png")
+        degen2 = os.path.join(self.test_dir, "degen2.png")
+        # 1x2 high-contrast image passes Laplacian variance check but triggers internal resize assertion in cv2.Stitcher
+        arr = np.array([[[50, 50, 50], [200, 200, 200]]], dtype=np.uint8)
+        cv2.imwrite(degen1, arr)
+        cv2.imwrite(degen2, arr)
+
+        stitcher = DroneStitcher(detector_type="SIFT")
+        out_path = os.path.join(self.test_dir, "mosaic_degen.png")
+        with self.assertRaises(RuntimeError) as ctx:
+            stitcher.stitch_image_list([degen1, degen2], out_path)
+        self.assertIn("Orthomosaic stitching crashed inside OpenCV", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
