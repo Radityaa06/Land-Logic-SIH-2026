@@ -39,7 +39,7 @@ def main():
 
     stitcher = DroneStitcher(detector_type=args.detector)
     stitcher.stitch_image_list(files, args.output)
-    print(f"✅ [OpenCV CLI] Stitching process completed -> {args.output}")
+    print(f"[OpenCV CLI] Stitching process completed -> {args.output}")
 
 
 if __name__ == "__main__":

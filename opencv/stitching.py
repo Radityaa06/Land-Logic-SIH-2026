@@ -4,8 +4,9 @@ Member 4: Computer Vision / OpenCV Engineer
 Workspace: opencv/
 Branch: feature/opencv
 
-Coordinates raw drone frame validation, preprocessing, feature matching,
-homography registration, and orthomosaic mosaic creation.
+Coordinates raw drone frame validation, EXIF-orientation handling,
+CLAHE exposure normalization, SIFT feature matching, homography
+registration, and global orthomosaic composite creation.
 """
 
 import os
@@ -17,10 +18,9 @@ try:
 except ImportError:
     cv2 = None
 
-from opencv.preprocess import balance_exposure, check_image_quality
+from opencv.preprocess import load_and_preprocess_image
 from opencv.features import FeatureExtractor
 from opencv.matching import FeatureMatcher
-from opencv.blending import feather_blend
 
 
 class DroneStitcher:
@@ -28,56 +28,78 @@ class DroneStitcher:
     Primary orthomosaic stitching engine for aerial drone image sets.
     """
     def __init__(self, detector_type: str = "SIFT"):
-        self.detector_type = detector_type
-        self.extractor = FeatureExtractor(detector_type=detector_type)
-        self.matcher = FeatureMatcher(detector_type=detector_type)
+        self.detector_type = detector_type.upper()
+        self.extractor = FeatureExtractor(detector_type=self.detector_type)
+        self.matcher = FeatureMatcher(detector_type=self.detector_type)
 
     def stitch_image_list(self, image_paths: List[str], output_path: str) -> str:
         """
         Stitches an array of overlapping aerial image frames into a composite orthomosaic.
-        Preserves existing interface for backend/orchestrator compatibility.
+        Raises catchable ValueError or RuntimeError on failures for API error propagation.
         """
-        print(f"👁️ [OpenCV] Received {len(image_paths)} images for stitching.")
+        if not image_paths or len(image_paths) == 0:
+            raise ValueError("Stitching requires at least 2 image frames. Received an empty image set.")
+
+        if len(image_paths) == 1:
+            raise ValueError(
+                f"Stitching requires at least 2 image frames to construct a mosaic. "
+                f"Received only 1 image: '{image_paths[0]}'. Cannot stitch a single frame."
+            )
+
+        print(f"[OpenCV] Received {len(image_paths)} images for stitching.")
         images = []
         for p in image_paths:
-            if os.path.exists(p):
-                if cv2 is not None:
-                    img = cv2.imread(p)
-                    if img is not None:
-                        is_ok, score, msg = check_image_quality(img)
-                        if is_ok:
-                            img = balance_exposure(img)
-                        images.append(img)
-                else:
-                    # Synthetic/Pillow fallback placeholder
-                    pass
+            try:
+                img = load_and_preprocess_image(p)
+                images.append(img)
+            except Exception as e:
+                raise ValueError(f"Failed to process image '{p}' for stitching: {str(e)}")
 
-        if cv2 is None or len(images) < 2:
-            print("👁️ [OpenCV] Insufficient frames or OpenCV unavailable. Generating synthetic composite.")
-            composite = np.zeros((1200, 1600, 3), dtype=np.uint8)
-            composite[100:1100, 100:1500] = [45, 120, 45]  # Greenish field
-            # Add synthetic agricultural paths
-            composite[500:540, 100:1500] = [180, 180, 180]
-            composite[100:1100, 780:820] = [180, 180, 180]
-            if cv2 is not None:
-                cv2.putText(composite, "Land Logic Aerial Composite", (300, 600),
-                            cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
-        else:
-            print("👁️ [OpenCV] Initializing OpenCV Stitcher pipeline...")
-            stitcher = cv2.Stitcher_create(cv2.Stitcher_SCANS)
-            status, composite = stitcher.stitch(images)
-            if status != cv2.Stitcher_OK:
-                print(f"⚠️ [OpenCV] Direct stitcher returned status {status}. Falling back to pairwise frame reference.")
-                composite = images[0]
+        if len(images) < 2:
+            raise ValueError(
+                f"Stitching requires at least 2 valid image frames. "
+                f"Only {len(images)} valid images could be loaded from {len(image_paths)} inputs."
+            )
 
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        if cv2 is not None:
-            cv2.imwrite(output_path, composite)
-        else:
-            from PIL import Image
-            Image.fromarray(composite).save(output_path)
+        if cv2 is None:
+            raise RuntimeError("OpenCV (cv2) is not installed. Cannot perform feature matching and stitching.")
 
-        print(f"✅ [OpenCV] Stitched orthomosaic saved to: {output_path}")
+        print(f"[OpenCV] Initializing OpenCV Stitcher pipeline (detector: {self.detector_type})...")
+        # Stitcher_SCANS is optimized for planar aerial/satellite ortho imagery
+        stitcher = cv2.Stitcher_create(cv2.Stitcher_SCANS)
+
+        # Configure feature detector to match StitchRequest (default: SIFT)
+        if self.detector_type == "SIFT" and hasattr(cv2, "SIFT_create"):
+            try:
+                stitcher.setFeaturesFinder(cv2.SIFT_create())
+            except (AttributeError, cv2.error):
+                pass
+        elif self.detector_type == "ORB" and hasattr(cv2, "ORB_create"):
+            try:
+                stitcher.setFeaturesFinder(cv2.ORB_create())
+            except (AttributeError, cv2.error):
+                pass
+
+        status, composite = stitcher.stitch(images)
+        if status != cv2.Stitcher_OK:
+            status_messages = {
+                1: "Insufficient visual feature overlap between frames to estimate alignment (ERR_NEED_MORE_IMGS). Ensure flight frames have >=60% overlap.",
+                2: "Homography estimation failed (ERR_HOMOGRAPHY_EST_FAIL). RANSAC could not find a consistent geometric transformation.",
+                3: "Camera parameter adjustment failed (ERR_CAMERA_PARAMS_ADJUST_FAIL).",
+            }
+            detail = status_messages.get(status, f"OpenCV stitcher returned error code {status}.")
+            raise RuntimeError(f"Orthomosaic stitching failed: {detail}")
+
+        if composite is None or composite.size == 0:
+            raise RuntimeError("Stitching produced an empty or null composite output.")
+
+        # Ensure output directory exists and write BGR image
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        success = cv2.imwrite(output_path, composite)
+        if not success or not os.path.exists(output_path):
+            raise RuntimeError(f"Failed to write stitched image output to: {output_path}")
+
+        print(f"[OpenCV] Stitched orthomosaic saved to: {output_path} (shape={composite.shape}, dtype={composite.dtype})")
         return output_path
 
     def process(self, image_paths: List[str], output_path: str) -> str:
