@@ -1,9 +1,24 @@
 import React from 'react';
-import { CLASS_LABELS } from './Legend';
+import { CLASS_LABELS, CROP_HEALTH_COLORS } from './Legend';
 
 export default function FeaturePopup({ feature, onClose }) {
   if (!feature) return null;
   const props = feature.properties || {};
+
+  const getCropHealthBadge = (health) => {
+    switch (health) {
+      case 'healthy':
+        return { label: '🟢 Healthy', color: CROP_HEALTH_COLORS.healthy, bg: 'rgba(34, 197, 94, 0.15)', border: 'rgba(34, 197, 94, 0.4)' };
+      case 'moderate':
+        return { label: '🟡 Moderate', color: CROP_HEALTH_COLORS.moderate, bg: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.4)' };
+      case 'stressed':
+        return { label: '🔴 Stressed', color: CROP_HEALTH_COLORS.stressed, bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)' };
+      default:
+        return null;
+    }
+  };
+
+  const healthBadge = getCropHealthBadge(props.crop_health);
 
   return (
     <div className="custom-feature-popup" style={{
@@ -52,6 +67,23 @@ export default function FeaturePopup({ feature, onClose }) {
           <div>
             <span style={{ color: '#94a3b8' }}>Mean VARI: </span>
             <strong style={{ color: '#4ade80' }}>{props.mean_vari}</strong>
+          </div>
+        )}
+        {healthBadge && (
+          <div>
+            <span style={{ color: '#94a3b8' }}>Crop Health: </span>
+            <span style={{
+              display: 'inline-block',
+              padding: '2px 7px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 600,
+              backgroundColor: healthBadge.bg,
+              color: healthBadge.color,
+              border: `1px solid ${healthBadge.border}`
+            }}>
+              {healthBadge.label}
+            </span>
           </div>
         )}
         <div>

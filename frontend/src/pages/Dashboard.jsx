@@ -74,7 +74,8 @@ export default function Dashboard() {
           vegetationPct: Math.round(Math.abs(result.summary.mean_vari || 0.72) * 100),
           meanNdvi: result.summary.mean_vari,
           parcelsIdentified: result.summary.detected_parcels,
-          coordinateSpace: result.coordinate_space
+          coordinateSpace: result.coordinate_space,
+          cropHealthSummary: result.summary.crop_health_summary
         });
       }
     } catch (err) {
@@ -101,6 +102,7 @@ export default function Dashboard() {
                 class: 'agricultural_land',
                 confidence: 0.94,
                 mean_vari: 0.78,
+                crop_health: 'healthy',
                 coordinate_space: 'pixel'
               }
             },
@@ -115,6 +117,7 @@ export default function Dashboard() {
                 class: 'forests',
                 confidence: 0.91,
                 mean_vari: 0.65,
+                crop_health: 'healthy',
                 coordinate_space: 'pixel'
               }
             },
@@ -129,6 +132,7 @@ export default function Dashboard() {
                 class: 'barren_soil',
                 confidence: 0.88,
                 mean_vari: 0.22,
+                crop_health: 'not_applicable',
                 coordinate_space: 'pixel'
               }
             },
@@ -143,6 +147,7 @@ export default function Dashboard() {
                 class: 'water_bodies',
                 confidence: 0.96,
                 mean_vari: -0.15,
+                crop_health: 'not_applicable',
                 coordinate_space: 'pixel'
               }
             }
@@ -154,7 +159,8 @@ export default function Dashboard() {
           vegetationPct: 76.4,
           meanNdvi: 0.71,
           parcelsIdentified: 4,
-          coordinateSpace: 'pixel'
+          coordinateSpace: 'pixel',
+          cropHealthSummary: { healthy: 2, moderate: 0, stressed: 0 }
         });
       }, 3000);
     }
