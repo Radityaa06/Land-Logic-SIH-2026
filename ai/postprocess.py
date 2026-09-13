@@ -58,6 +58,33 @@ def generate_dummy_land_mask(height: int, width: int) -> np.ndarray:
     return mask
 
 
+# Spectral thresholds for crop health and vegetation vitality using VARI
+VARI_HEALTHY_THRESHOLD = 0.20
+VARI_MODERATE_THRESHOLD = 0.05
+
+
+def classify_crop_health(class_name: str, mean_vari: float) -> str:
+    """
+    Classifies vegetation vitality based on Visible Atmospherically Resistant Index (VARI).
+
+    Formula: VARI = (Green - Red) / (Green + Red - Blue)
+    For vegetation classes ('agricultural_land', 'forests'):
+      - VARI >= 0.20: 'healthy' (dense, active chlorophyll canopy)
+      - 0.05 <= VARI < 0.20: 'moderate' (adequate canopy, mild moisture stress or early growth)
+      - VARI < 0.05: 'stressed' (chlorosis, moisture deficit, sparse canopy, or crop damage)
+    For non-vegetative classes ('barren_soil', 'water_bodies', 'man_made_structures'):
+      - Returns 'not_applicable'
+    """
+    if class_name in ("agricultural_land", "forests"):
+        if mean_vari >= VARI_HEALTHY_THRESHOLD:
+            return "healthy"
+        elif mean_vari >= VARI_MODERATE_THRESHOLD:
+            return "moderate"
+        else:
+            return "stressed"
+    return "not_applicable"
+
+
 def extract_parcels_from_mask(
     mask: np.ndarray,
     vari_map: Optional[np.ndarray] = None,
@@ -110,6 +137,8 @@ def extract_parcels_from_mask(
                     conf += 0.05
                 confidence = float(np.clip(conf, 0.55, 0.95))
 
+                crop_health = classify_crop_health(cls_name, mean_vari_val)
+
                 parcels.append({
                     "parcel_id": f"parcel_{parcel_idx:02d}",
                     "class": cls_name,
@@ -117,7 +146,8 @@ def extract_parcels_from_mask(
                     "confidence": round(confidence, 2),
                     "pixel_bbox": [min_x, min_y, max_x, max_y],
                     "pixel_area": pixel_count,
-                    "mean_vari": round(mean_vari_val, 3)
+                    "mean_vari": round(mean_vari_val, 3),
+                    "crop_health": crop_health
                 })
                 parcel_idx += 1
         else:
@@ -136,6 +166,7 @@ def extract_parcels_from_mask(
                 else 0.0
             )
             confidence = float(np.clip(0.80 + (pixel_count / (h * w)) * 0.1, 0.60, 0.90))
+            crop_health = classify_crop_health(cls_name, mean_vari_val)
 
             parcels.append({
                 "parcel_id": f"parcel_{parcel_idx:02d}",
@@ -144,7 +175,8 @@ def extract_parcels_from_mask(
                 "confidence": round(confidence, 2),
                 "pixel_bbox": [min_x, min_y, max_x, max_y],
                 "pixel_area": pixel_count,
-                "mean_vari": round(mean_vari_val, 3)
+                "mean_vari": round(mean_vari_val, 3),
+                "crop_health": crop_health
             })
             parcel_idx += 1
 

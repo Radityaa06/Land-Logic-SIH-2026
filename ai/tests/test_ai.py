@@ -21,7 +21,10 @@ from ai.tiling import ImageTiler
 from ai.postprocess import (
     compute_vari_index,
     extract_parcels_from_mask,
-    generate_dummy_land_mask
+    generate_dummy_land_mask,
+    classify_crop_health,
+    VARI_HEALTHY_THRESHOLD,
+    VARI_MODERATE_THRESHOLD
 )
 from ai.inference import (
     run_inference,
@@ -233,8 +236,39 @@ class TestAIModule(unittest.TestCase):
                 self.assertGreater(p["pixel_area"], 0)
                 self.assertIn("mean_vari", p)
                 self.assertTrue(-1.0 <= p["mean_vari"] <= 1.0)
+                self.assertIn("crop_health", p)
+                self.assertIn(
+                    p["crop_health"],
+                    ["healthy", "moderate", "stressed", "not_applicable"],
+                    f"Unexpected crop_health status: {p['crop_health']}"
+                )
+
+    def test_crop_health_classification_thresholds(self):
+        """Test crop health classification logic across vegetation and non-vegetation classes."""
+        self.assertEqual(VARI_HEALTHY_THRESHOLD, 0.20)
+        self.assertEqual(VARI_MODERATE_THRESHOLD, 0.05)
+
+        # Agricultural land tests
+        self.assertEqual(classify_crop_health("agricultural_land", 0.35), "healthy")
+        self.assertEqual(classify_crop_health("agricultural_land", 0.20), "healthy")
+        self.assertEqual(classify_crop_health("agricultural_land", 0.15), "moderate")
+        self.assertEqual(classify_crop_health("agricultural_land", 0.05), "moderate")
+        self.assertEqual(classify_crop_health("agricultural_land", 0.02), "stressed")
+        self.assertEqual(classify_crop_health("agricultural_land", -0.10), "stressed")
+
+        # Forest canopy tests
+        self.assertEqual(classify_crop_health("forests", 0.25), "healthy")
+        self.assertEqual(classify_crop_health("forests", 0.10), "moderate")
+        self.assertEqual(classify_crop_health("forests", -0.05), "stressed")
+
+        # Non-vegetative classes must return 'not_applicable'
+        self.assertEqual(classify_crop_health("barren_soil", 0.40), "not_applicable")
+        self.assertEqual(classify_crop_health("water_bodies", -0.20), "not_applicable")
+        self.assertEqual(classify_crop_health("man_made_structures", 0.0), "not_applicable")
+        self.assertEqual(classify_crop_health("unclassified", 0.50), "not_applicable")
 
 
 if __name__ == "__main__":
     unittest.main()
+
 

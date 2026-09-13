@@ -72,7 +72,8 @@ result = run_inference(
             "confidence": 0.95,               # float: detection confidence [0.0, 1.0]
             "pixel_bbox": [40, 43, 299, 279], # List[int]: [min_x, min_y, max_x, max_y]
             "pixel_area": 56200,              # int: area in pixels of connected component
-            "mean_vari": 0.742                # float: mean VARI within parcel [-1.0, 1.0]
+            "mean_vari": 0.742,               # float: mean VARI within parcel [-1.0, 1.0]
+            "crop_health": "healthy"          # str: 'healthy', 'moderate', 'stressed', or 'not_applicable'
         }
     ],
     "raster_shape": [640, 640]                # List[int]: [height, width] of input orthomosaic
@@ -82,24 +83,31 @@ result = run_inference(
 ### Downstream Consumer Mapping
 
 - **Member 2 (`backend/app/services/pipeline.py`)**:
-  - `ai_results["predictions"]`: iterated to extract distinct detected classes (`{p["class"] for p in ai_results.get("predictions", [])}`).
+  - `ai_results["predictions"]`: iterated to extract distinct detected classes (`{p["class"] for p in ai_results.get("predictions", [])}`) and aggregate `crop_health_summary`.
   - `ai_results["mean_vari"]`: included in pipeline response summary.
   - `ai_results["mask_path"]`: mapped to artifacts response payload.
 - **Member 5 (`gis/geojson.py`)**:
   - `ai_results["predictions"]`: passed directly as `parcels` into `generate_parcels_geojson()`.
-  - Reads `p["pixel_bbox"]` for polygon ring bounds, `p["parcel_id"]`, `p["class"]`, `p["confidence"]`, `p["mean_vari"]`, and `p["pixel_area"]`.
+  - Reads `p["pixel_bbox"]` for polygon ring bounds, `p["parcel_id"]`, `p["class"]`, `p["confidence"]`, `p["mean_vari"]`, `p["pixel_area"]`, and `p["crop_health"]`.
 
 ---
 
-## 🌿 Spectral Indices Disclosure: VARI vs. NDVI
+## 🌿 Spectral Indices & Crop Health Classification (VARI)
 
 - **VARI (`compute_vari_index`) is REAL**: Calculated per-pixel using `(Green - Red) / (Green + Red - Blue)` from the 3 visible RGB channels. Includes numerical stabilization (`epsilon = 1e-5`) to eliminate zero-division and sign-inversion spikes in deep shadows and water bodies.
+- **Crop Health & Stress Classification (`classify_crop_health`)**:
+  - Evaluates vegetation vitality for `agricultural_land` and `forests`:
+    - **`healthy`**: $\text{VARI} \ge 0.20$ (dense, vigorous canopy with strong chlorophyll reflectance)
+    - **`moderate`**: $0.05 \le \text{VARI} < 0.20$ (adequate canopy, mild moisture stress, or early-stage growth)
+    - **`stressed`**: $\text{VARI} < 0.05$ (sparse canopy, chlorosis, moisture deficit, or crop damage)
+  - Non-vegetative categories (`barren_soil`, `water_bodies`, `man_made_structures`) return **`not_applicable`**.
 - **NDVI is NOT computed**: True NDVI requires Near-Infrared (NIR) imagery ($[NIR - Red] / [NIR + Red]$). Because drone inputs are standard 3-channel RGB imagery, NDVI cannot be calculated without multispectral hardware. VARI is the standard RGB proxy.
 
 ---
 
 ## ⚙️ Configuration & Thresholds
 
+- **Crop Health Thresholds**: `VARI_HEALTHY_THRESHOLD = 0.20`, `VARI_MODERATE_THRESHOLD = 0.05`.
 - **Active Confidence Threshold**: `DEFAULT_CONFIDENCE_THRESHOLD = 0.50`. Discards small isolated speckles and boundary noise below 50% confidence.
 - **Minimum Parcel Area**: `min_area_pixels = 100`. Connected components smaller than 100 pixels are excluded from parcel predictions to suppress tile seam artifacts.
 - **Model Caching**: Cached in `_MODEL_CACHE` within `ai/model.py`. New instances are only allocated if a different checkpoint path or device is specified, or if `force_reload=True`.
