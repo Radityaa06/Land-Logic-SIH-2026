@@ -16,7 +16,7 @@
 3. **Ground Sample Distance (GSD)**: Calculates the physical ground dimension represented by each pixel based on altitude and focal length (`gis/gsd.py`).
 4. **World Files & Georeferencing**: Emits 2D affine transformation matrices and ESRI world files (`gis/georeference.py`).
 5. **Vector Polygonization**: Converts AI raster predictions into simplified polygon rings (`gis/vectorize.py`).
-6. **RFC 7946 GeoJSON Generation**: Emits standardized GeoJSON FeatureCollections consumed by Member 2 (Backend) and Member 6 (Leaflet Map) (`gis/geojson.py`).
+6. **RFC 7946 GeoJSON Generation**: Emits standardized GeoJSON FeatureCollections consumed by Member 2 (Backend) and Member 6 (Leaflet Map) (`gis/geojson.py`). Feature properties include `parcel_id`, `class`, `confidence`, `mean_vari`, `pixel_area`, `crop_health` (`healthy`, `moderate`, `stressed`, `not_applicable`), and `coordinate_space`.
 7. **Coordinate Transformations & Validation**: Projects across WGS84, Web Mercator, and validates topology (`gis/transform.py`, `gis/validate.py`).
 
 ---

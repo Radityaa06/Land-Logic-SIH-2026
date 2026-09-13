@@ -71,6 +71,7 @@ def generate_parcels_geojson(
                 "confidence": p.get("confidence", 0.90),
                 "mean_vari": p.get("mean_vari", 0.0),
                 "pixel_area": p.get("pixel_area", 0),
+                "crop_health": p.get("crop_health", "not_applicable"),
                 "coordinate_space": coordinate_space
             }
         }

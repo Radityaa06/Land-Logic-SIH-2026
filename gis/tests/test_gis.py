@@ -33,11 +33,14 @@ class TestGISModule(unittest.TestCase):
                 "class": "agricultural_land",
                 "confidence": 0.95,
                 "pixel_bbox": [10, 20, 100, 150],
-                "pixel_area": 11700
+                "pixel_area": 11700,
+                "crop_health": "healthy"
             }
         ]
         geojson_doc = generate_parcels_geojson(sample_parcels)
         self.assertEqual(geojson_doc["coordinate_space"], "pixel")
+        self.assertEqual(len(geojson_doc["features"]), 1)
+        self.assertEqual(geojson_doc["features"][0]["properties"]["crop_health"], "healthy")
         is_valid, errors = validate_geojson(geojson_doc)
         self.assertTrue(is_valid, f"Validation errors: {errors}")
 
@@ -48,7 +51,8 @@ class TestGISModule(unittest.TestCase):
                 "class": "forests",
                 "confidence": 0.91,
                 "pixel_bbox": [50, 50, 200, 200],
-                "pixel_area": 22500
+                "pixel_area": 22500,
+                "crop_health": "moderate"
             }
         ]
         geo_ref = {
@@ -59,8 +63,23 @@ class TestGISModule(unittest.TestCase):
         }
         geojson_doc = generate_parcels_geojson(sample_parcels, geo_reference=geo_ref)
         self.assertEqual(geojson_doc["coordinate_space"], "geographic")
+        self.assertEqual(len(geojson_doc["features"]), 1)
+        self.assertEqual(geojson_doc["features"][0]["properties"]["crop_health"], "moderate")
         is_valid, errors = validate_geojson(geojson_doc)
         self.assertTrue(is_valid, f"Validation errors: {errors}")
+
+    def test_geojson_crop_health_default_fallback(self):
+        sample_parcels = [
+            {
+                "parcel_id": "p03",
+                "class": "barren_soil",
+                "confidence": 0.88,
+                "pixel_bbox": [0, 0, 50, 50],
+                "pixel_area": 2500
+            }
+        ]
+        geojson_doc = generate_parcels_geojson(sample_parcels)
+        self.assertEqual(geojson_doc["features"][0]["properties"]["crop_health"], "not_applicable")
 
 
 if __name__ == "__main__":
