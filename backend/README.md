@@ -15,11 +15,12 @@
    Frontend  ──>  POST /predict  ──>  Backend
                                         │
                                         ├──> Member 4 (OpenCV Stitching)
-                                        ├──> Member 3 (AI Segmentation & VARI)
+                                        ├──> Member 3 (AI Segmentation, VARI & Crop Health)
                                         └──> Member 5 (GIS Georeferencing & GeoJSON)
                                         │
    Frontend  <──  JSON Response   <─────┘
    ```
+   Aggregates parcel counts, spectral indices, and crop health distribution (`crop_health_summary`: healthy, moderate, stressed) in the response summary.
 3. **Demo Hardening & Security Controls**:
    - **Shared API Key Authentication**: Protects `/predict` and `/api/v1/predict` via `X-API-Key` header with fail-closed security. `/health` remains public for uptime checks.
    - **Safe Image Decode**: Uses PIL integrity verification (`verify()` + draft `load()`) to reject corrupted files or renamed non-images before pipeline execution.

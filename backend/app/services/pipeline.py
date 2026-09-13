@@ -156,6 +156,12 @@ def execute_pipeline(
     detected_classes = list({p["class"] for p in ai_results.get("predictions", [])})
     detected_count = len(ai_results.get("predictions", []))
 
+    crop_health_summary = {"healthy": 0, "moderate": 0, "stressed": 0}
+    for p in ai_results.get("predictions", []):
+        health = p.get("crop_health")
+        if health in crop_health_summary:
+            crop_health_summary[health] += 1
+
     _emit("complete", "done", f"Pipeline completed successfully: {detected_count} parcels detected ({geojson_doc.get('coordinate_space', 'pixel')} space)")
 
     return {
@@ -167,7 +173,8 @@ def execute_pipeline(
             "image_count": len(image_paths),
             "mean_vari": ai_results.get("mean_vari", 0.0),
             "detected_parcels": len(ai_results.get("predictions", [])),
-            "classes_detected": detected_classes
+            "classes_detected": detected_classes,
+            "crop_health_summary": crop_health_summary
         },
         "geojson": geojson_doc,
         "artifacts": {

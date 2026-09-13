@@ -50,6 +50,10 @@ class PredictSummary(BaseModel):
     mean_vari: float
     detected_parcels: int
     classes_detected: List[str]
+    crop_health_summary: Optional[Dict[str, int]] = Field(
+        default=None,
+        description="Parcel counts grouped by crop health status: healthy, moderate, stressed"
+    )
 
 
 class PredictResponse(BaseModel):

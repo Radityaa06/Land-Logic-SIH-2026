@@ -122,8 +122,19 @@ class TestBackendModule(unittest.TestCase):
         self.assertEqual(data["status"], "success")
         self.assertIn("coordinate_space", data)
         self.assertIn("summary", data)
+        self.assertIn("crop_health_summary", data["summary"])
+        self.assertIsInstance(data["summary"]["crop_health_summary"], dict)
+        self.assertIn("healthy", data["summary"]["crop_health_summary"])
+        self.assertIn("moderate", data["summary"]["crop_health_summary"])
+        self.assertIn("stressed", data["summary"]["crop_health_summary"])
         self.assertIn("geojson", data)
         self.assertIn("artifacts", data)
+        for feat in data["geojson"]["features"]:
+            self.assertIn("crop_health", feat["properties"])
+            self.assertIn(
+                feat["properties"]["crop_health"],
+                ["healthy", "moderate", "stressed", "not_applicable"]
+            )
 
     # 5. Concurrency guard returns 503 when cap is reached
     def test_concurrency_guard_returns_503_when_busy(self):
@@ -149,6 +160,7 @@ class TestBackendModule(unittest.TestCase):
         self.assertEqual(res["status"], "success")
         self.assertIn(res["coordinate_space"], ["geographic", "pixel"])
         self.assertIn("summary", res)
+        self.assertIn("crop_health_summary", res["summary"])
         self.assertIn("geojson", res)
         self.assertEqual(res["geojson"]["type"], "FeatureCollection")
         self.assertTrue(os.path.exists(res["artifacts"]["stitched_image_path"]))

@@ -37,7 +37,12 @@ Frontend  <──  JSON Response   <─────┘
       "image_count": 5,
       "mean_vari": 0.72,
       "detected_parcels": 4,
-      "classes_detected": ["agricultural_land", "forests"]
+      "classes_detected": ["agricultural_land", "forests"],
+      "crop_health_summary": {
+        "healthy": 3,
+        "moderate": 1,
+        "stressed": 0
+      }
     },
     "geojson": {
       "type": "FeatureCollection",
@@ -63,6 +68,7 @@ Frontend  <──  JSON Response   <─────┘
             "confidence": 0.94,
             "mean_vari": 0.78,
             "pixel_area": 42000,
+            "crop_health": "healthy",
             "coordinate_space": "geographic"
           }
         }
@@ -81,6 +87,17 @@ Frontend  <──  JSON Response   <─────┘
 ## 2. GeoJSON & Spatial Contract (CRITICAL)
 
 Member 5 emits, and Member 6 consumes, standard RFC 7946 GeoJSON.
+
+### Feature Properties Schema
+- `parcel_id` (`str`): Unique sequential identifier (e.g. `"parcel_01"`).
+- `class` (`str`): Land use classification (`"agricultural_land"`, `"barren_soil"`, `"forests"`, `"water_bodies"`, `"man_made_structures"`).
+- `confidence` (`float`): Bounded detection confidence score (`0.50` - `0.95`).
+- `mean_vari` (`float`): Mean Visible Atmospherically Resistant Index across parcel pixels (`-1.0` to `1.0`).
+- `pixel_area` (`int`): Area in pixels of the parcel connected component.
+- `crop_health` (`str`): Vegetation health status (`"healthy"`, `"moderate"`, `"stressed"`, or `"not_applicable"`).
+  - For `agricultural_land` & `forests`: `VARI >= 0.20` -> `"healthy"`, `0.05 <= VARI < 0.20` -> `"moderate"`, `VARI < 0.05` -> `"stressed"`.
+  - For non-vegetation: `"not_applicable"`.
+- `coordinate_space` (`str`): `"geographic"` (WGS84) or `"pixel"`.
 
 > [!CAUTION]
 > **Coordinate Space Semantics**:
