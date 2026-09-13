@@ -28,13 +28,13 @@ Our system coordinates an automated 4-stage pipeline executed sequentially throu
 [OpenCV Stitching Engine] ────────> Stitched Orthomosaic (.png)
        │
        ▼
-[AI Land Vision Engine]   ────────> 5-Class Mask & Real VARI Vegetative Index
+[AI Land Vision Engine]   ────────> 5-Class Mask, Real VARI & Crop Health (Healthy/Stressed)
        │
        ▼
 [GIS Telemetry Engine]    ────────> Standard RFC 7946 GeoJSON (pixel or geographic)
        │
        ▼
-[Interactive Dashboard]   ────────> SVG Parcel Canvas & Analytics Cards
+[Interactive Dashboard]   ────────> SVG Parcel Canvas, Legend & Crop Health Analytics Cards
 ```
 
 ### Realistic Comparison
@@ -64,9 +64,9 @@ Our system coordinates an automated 4-stage pipeline executed sequentially throu
 - **6-Module Architecture**: Fully partitioned codebase (`backend/`, `frontend/`, `ai/`, `opencv/`, `gis/`, `shared/`) with clean contracts and zero circular dependencies.
 - **OpenCV Orthomosaic Stitching (`opencv/stitching.py`)**: SIFT and ORB feature extraction, k-NN descriptor matching with Lowe's ratio test, RANSAC homography estimation, and multi-band feather blending.
 - **Strict Coordinate Space Handling (`gis/geojson.py`, `gis/exif.py`)**: The system parses genuine EXIF GPS tags from drone frames. If genuine GPS exists, it projects coordinates to WGS84 (`coordinate_space: "geographic"`). If GPS is missing or invalid, it explicitly tags `coordinate_space: "pixel"` and uses image coordinates. **It never fabricates fake latitude/longitude.**
-- **Real Vegetative Index (VARI)**: Evaluates Visible Atmospherically Resistant Index (`(Green - Red) / (Green + Red - Blue)`) per-pixel and per-parcel with zero-division numerical stabilization.
+- **Real Vegetative Index (VARI) & Crop Health Classification (`ai/postprocess.py`, `backend/app/services/pipeline.py`)**: Evaluates Visible Atmospherically Resistant Index (`(Green - Red) / (Green + Red - Blue)`) per-pixel and per-parcel with zero-division numerical stabilization. Transparently categorizes vegetative parcels into `healthy` ($\text{VARI} \ge 0.20$), `moderate` ($0.05 \le \text{VARI} < 0.20$), and `stressed` ($\text{VARI} < 0.05$), delivering an aggregated `crop_health_summary` for PMFBY crop damage verification.
 - **FastAPI Pipeline Orchestration (`backend/app/services/pipeline.py`)**: Implements strict image count caps (`MAX_IMAGE_COUNT=60`), pipeline execution timeouts (`PIPELINE_TIMEOUT_SECONDS=90`), concurrency limits (`MAX_CONCURRENT_REQUESTS=3`), request correlation IDs, and real-time Server-Sent Events (`GET /projects/{id}/events`).
-- **Automated Test Coverage**: 66 unit and integration tests passing cleanly across AI (12), OpenCV (13), GIS, and Backend (21).
+- **Automated Test Coverage**: 52 unit and integration tests passing cleanly across AI (13), OpenCV (13), GIS (5), and Backend (21).
 
 ### What Is Simulated, Heuristic, or Limited Today
 - **AI Model Status**: The AI engine in `ai/model.py` currently runs a **calibrated spectral heuristic engine** based on visible color excess (green excess for crops, dark/dense thresholding for forests, blue dominance for water, high luminance for structures) rather than an externally trained deep learning segmentation network. As disclosed in `ai/README.md`, real weight loading infrastructure is wired (`_load_weights()` supports PyTorch and serialized models), but training a dedicated deep segmentation model remains on the roadmap pending a verified, hand-annotated drone aerial dataset.
@@ -125,8 +125,8 @@ To establish credibility with agricultural and revenue authorities, system outpu
 ### Q4: "Who owns the uploaded drone photography and vector parcel data?"
 > **Answer**: "The system operates as an isolated processing pipeline. Each upload is scoped to a unique `project_id` under `backend/uploads/` and `backend/outputs/`. No image data is shared across sessions or uploaded to third-party AI APIs. In an institutional deployment, the platform would be deployed inside the state government's or agency's private Virtual Private Cloud (VPC), ensuring complete data sovereignty under Indian digital data protection standards."
 
-### Q5: "Why did you use VARI instead of NDVI?"
-> **Answer**: "NDVI mathematically requires a Near-Infrared (NIR) band: `(NIR - Red) / (NIR + Red)`. Standard consumer drones carry visible-spectrum RGB sensors with no NIR channel. Computing 'NDVI' from RGB images is scientifically invalid. Instead, we use the Visible Atmospherically Resistant Index (VARI): `(Green - Red) / (Green + Red - Blue)`, which is the remote sensing standard for evaluating vegetation vigor with standard RGB cameras."
+### Q5: "Why did you use VARI instead of NDVI, and how does it determine crop health?"
+> **Answer**: "NDVI mathematically requires a Near-Infrared (NIR) band: `(NIR - Red) / (NIR + Red)`. Standard consumer drones carry visible-spectrum RGB sensors with no NIR channel. Computing 'NDVI' from RGB images is scientifically invalid. Instead, we use the Visible Atmospherically Resistant Index (VARI): `(Green - Red) / (Green + Red - Blue)`, which is the remote sensing standard for evaluating vegetation vigor with standard RGB cameras. From VARI, we classify crops into three transparent tiers: Healthy ($\ge 0.20$), Moderate ($0.05–0.20$), and Stressed ($< 0.05$), pinpointing localized moisture stress or pest chlorosis without requiring expensive multispectral cameras."
 
 ### Q6: "How do you prevent server crashes when multiple users upload heavy drone image sets?"
 > **Answer**: "We implemented three defensive mechanisms in `backend/`:
