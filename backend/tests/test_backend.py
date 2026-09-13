@@ -11,6 +11,7 @@ Hardening & Security Addendum Verification:
 import os
 import sys
 import io
+import shutil
 import asyncio
 import unittest
 from PIL import Image
@@ -37,6 +38,19 @@ def _make_valid_png_bytes(w: int = 10, h: int = 10) -> bytes:
     img = Image.new("RGB", (w, h), color=(46, 139, 87))
     img.save(buf, format="PNG")
     return buf.getvalue()
+
+
+def _get_sample_image_files():
+    """Returns file tuples for real overlapping sample images."""
+    p1 = os.path.abspath("shared/sample_images/frame_01.png")
+    p2 = os.path.abspath("shared/sample_images/frame_02.png")
+    with open(p1, "rb") as f1, open(p2, "rb") as f2:
+        b1 = f1.read()
+        b2 = f2.read()
+    return [
+        ("files", ("frame_01.png", io.BytesIO(b1), "image/png")),
+        ("files", ("frame_02.png", io.BytesIO(b2), "image/png")),
+    ]
 
 
 class TestBackendModule(unittest.TestCase):
@@ -101,8 +115,7 @@ class TestBackendModule(unittest.TestCase):
 
     # Valid image predict end-to-end
     def test_predict_valid_small_image(self):
-        valid_png = _make_valid_png_bytes(10, 10)
-        files = [("files", ("valid_drone_1.png", io.BytesIO(valid_png), "image/png"))]
+        files = _get_sample_image_files()
         response = self.client.post("/predict", files=files, headers=self.auth_headers)
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -130,7 +143,7 @@ class TestBackendModule(unittest.TestCase):
         outputs_dir = "backend/outputs/test_run"
         res = execute_pipeline(
             project_id="test_run",
-            image_paths=[],
+            image_paths=["shared/sample_images/frame_01.png", "shared/sample_images/frame_02.png"],
             outputs_base_dir="backend/outputs"
         )
         self.assertEqual(res["status"], "success")
@@ -218,7 +231,8 @@ class TestBackendModule(unittest.TestCase):
         finally:
             predict_module.PIPELINE_TIMEOUT_SECONDS = original_timeout
 
-        next_res = self.client.post("/predict", headers=self.auth_headers)
+        files = _get_sample_image_files()
+        next_res = self.client.post("/predict", files=files, headers=self.auth_headers)
         self.assertEqual(next_res.status_code, 200)
 
     # Priority 3 Verification: SSE client receives real-time stage transition events
@@ -230,9 +244,10 @@ class TestBackendModule(unittest.TestCase):
 
         async def run_sse_test():
             events_received = []
+            files = _get_sample_image_files()
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
                 # 1. Trigger predict
-                pred_res = await client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+                pred_res = await client.post("/predict", data={"project_id": proj_id}, files=files, headers=self.auth_headers)
                 self.assertEqual(pred_res.status_code, 200)
 
                 # 2. Connect to SSE events endpoint
@@ -271,7 +286,8 @@ class TestBackendModule(unittest.TestCase):
 
                 async def trigger_predict():
                     await asyncio.sleep(0.05)
-                    return await client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+                    files = _get_sample_image_files()
+                    return await client.post("/predict", data={"project_id": proj_id}, files=files, headers=self.auth_headers)
 
                 sse_task = asyncio.create_task(read_sse())
                 pred_task = asyncio.create_task(trigger_predict())
@@ -303,8 +319,7 @@ class TestBackendModule(unittest.TestCase):
 
     # Priority 4 Verification: Correlation/request ID returned in response and logged
     def test_predict_correlation_id_returned(self):
-        valid_png = _make_valid_png_bytes(10, 10)
-        files = [("files", ("valid_drone_corr.png", io.BytesIO(valid_png), "image/png"))]
+        files = _get_sample_image_files()
         response = self.client.post("/predict", files=files, headers=self.auth_headers)
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -346,7 +361,6 @@ class TestBackendModule(unittest.TestCase):
     # Fix 4 Verification: GET /projects/{id}/layers/parcels.geojson returns empty state before run and real data after run
     def test_parcels_geojson_returns_empty_before_run_and_real_data_after_run(self):
         import uuid
-        import shutil
         proj_id = f"test_geojson_honest_empty_{uuid.uuid4().hex[:8]}"
 
         try:
@@ -359,8 +373,9 @@ class TestBackendModule(unittest.TestCase):
             self.assertEqual(data_before.get("features"), [])
             self.assertNotIn("parcel_01", str(data_before))
 
-            # 2. Run /predict for project
-            pred_res = self.client.post("/predict", data={"project_id": proj_id}, headers=self.auth_headers)
+            # 2. Run /predict for project with real sample images
+            files = _get_sample_image_files()
+            pred_res = self.client.post("/predict", data={"project_id": proj_id}, files=files, headers=self.auth_headers)
             self.assertEqual(pred_res.status_code, 200)
 
             # 3. After run: returns real generated FeatureCollection
@@ -374,6 +389,38 @@ class TestBackendModule(unittest.TestCase):
             out_dir = os.path.join("backend", "outputs", proj_id)
             if os.path.exists(out_dir):
                 shutil.rmtree(out_dir, ignore_errors=True)
+
+    # Item 3 Integration Test: Happy path full pipeline with real sample images
+    def test_predict_happy_path_real_images(self):
+        """Integration test: exercises POST /predict with real sample images and asserts 200 response with valid stitched_image artifact."""
+        import uuid
+        proj_id = f"test_happy_path_real_{uuid.uuid4().hex[:8]}"
+        files = _get_sample_image_files()
+        response = self.client.post(
+            "/predict",
+            data={
+                "project_id": proj_id,
+                "feature_detector": "SIFT",
+                "blend_mode": "MULTIBAND",
+                "downscale_factor": 1.0
+            },
+            files=files,
+            headers=self.auth_headers
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["project_id"], proj_id)
+        self.assertIn("artifacts", data)
+        self.assertIn("stitched_image_url", data["artifacts"])
+
+        stitched_disk_path = os.path.join("backend", "outputs", proj_id, "stitched_orthomosaic.png")
+        self.assertTrue(os.path.exists(stitched_disk_path), f"Artifact missing on disk: {stitched_disk_path}")
+        self.assertGreater(os.path.getsize(stitched_disk_path), 0, "Artifact file is empty")
+
+        # Cleanup test artifacts
+        shutil.rmtree(os.path.join("backend", "outputs", proj_id), ignore_errors=True)
+        shutil.rmtree(os.path.join("backend", "uploads", proj_id), ignore_errors=True)
 
     # Smaller Fix 1 Verification: verify_api_key is consolidated across dependencies.py and auth.py
     def test_verify_api_key_consolidation(self):

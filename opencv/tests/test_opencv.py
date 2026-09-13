@@ -53,17 +53,9 @@ class TestOpenCVModule(unittest.TestCase):
             f.write(b"NOT_A_VALID_IMAGE_CONTENT_XYZ")
 
     def tearDown(self):
-        for p in [self.frame1_path, self.frame2_path, self.corrupt_path]:
-            if os.path.exists(p):
-                try:
-                    os.remove(p)
-                except OSError:
-                    pass
+        import shutil
         if os.path.exists(self.test_dir):
-            try:
-                os.rmdir(self.test_dir)
-            except OSError:
-                pass
+            shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_balance_exposure(self):
         result = balance_exposure(self.dummy_img)
@@ -130,6 +122,30 @@ class TestOpenCVModule(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             stitcher.stitch_image_list([self.frame1_path, "does_not_exist_99.png"], out_path)
         self.assertIn("Failed to process image", str(ctx.exception))
+
+    def test_happy_path_real_sample_images(self):
+        sample_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "shared", "sample_images"))
+        frames = [
+            os.path.join(sample_dir, f)
+            for f in ["frame_01.png", "frame_02.png", "frame_03.png"]
+        ]
+        # Only run if real sample frames are present on disk
+        if all(os.path.exists(p) for p in frames):
+            stitcher = DroneStitcher(detector_type="SIFT", blend_mode="MULTIBAND", downscale_factor=1.0)
+            out_path = os.path.join(self.test_dir, "real_mosaic_test.png")
+            result_path = stitcher.stitch_image_list(frames, out_path)
+            self.assertTrue(os.path.exists(result_path))
+
+            if cv2 is not None:
+                img = cv2.imread(result_path)
+                self.assertIsNotNone(img)
+                self.assertEqual(len(img.shape), 3)
+                self.assertEqual(img.shape[2], 3)
+                self.assertEqual(img.dtype, np.uint8)
+                self.assertGreater(img.shape[0], 200)
+                self.assertGreater(img.shape[1], 200)
+                # Verify non-degenerate output (variance across image pixels > 50)
+                self.assertGreater(float(np.var(img)), 50.0)
 
 
 if __name__ == "__main__":

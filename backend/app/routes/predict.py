@@ -51,7 +51,10 @@ PIPELINE_TIMEOUT_SECONDS = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "90"))
 )
 async def predict(
     files: Optional[List[UploadFile]] = File(None),
-    project_id: Optional[str] = Form(None)
+    project_id: Optional[str] = Form(None),
+    feature_detector: Optional[str] = Form("SIFT"),
+    blend_mode: Optional[str] = Form("MULTIBAND"),
+    downscale_factor: Optional[float] = Form(1.0),
 ):
     """
     Executes the drone mapping pipeline:
@@ -155,7 +158,16 @@ async def predict(
         try:
             # Run blocking CPU pipeline in worker thread with timeout protection and real stage callbacks
             res = await asyncio.wait_for(
-                asyncio.to_thread(execute_pipeline, proj_id, saved_paths, OUTPUT_BASE_DIR, on_progress),
+                asyncio.to_thread(
+                    execute_pipeline,
+                    proj_id,
+                    saved_paths,
+                    OUTPUT_BASE_DIR,
+                    on_progress,
+                    feature_detector,
+                    blend_mode,
+                    downscale_factor,
+                ),
                 timeout=PIPELINE_TIMEOUT_SECONDS
             )
         except asyncio.TimeoutError:

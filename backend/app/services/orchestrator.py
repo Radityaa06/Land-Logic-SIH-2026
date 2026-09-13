@@ -12,7 +12,7 @@ import os
 import json
 import asyncio
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 # In-memory store of stage transition events per project
 PROJECT_EVENTS: Dict[str, List[Dict[str, Any]]] = {}
@@ -65,7 +65,7 @@ UPLOAD_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", 
 OUTPUT_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "outputs"))
 
 
-async def run_full_pipeline(project_id: str, job_id: str, jobs_db: dict):
+async def run_full_pipeline(project_id: str, job_id: str, jobs_db: dict, stitch_request: Optional[Any] = None):
     """
     Executes the multi-stage pipeline as an async background task:
     1. OpenCV Orthomosaic Stitching (Member 4)
@@ -92,9 +92,20 @@ async def run_full_pipeline(project_id: str, job_id: str, jobs_db: dict):
                 jobs_db[job_id]["message"] = message
                 jobs_db[job_id]["updated_at"] = datetime.utcnow()
 
+        detector = getattr(stitch_request, "feature_detector", "SIFT") if stitch_request else "SIFT"
+        blend = getattr(stitch_request, "blend_mode", "MULTIBAND") if stitch_request else "MULTIBAND"
+        downscale = getattr(stitch_request, "downscale_factor", 1.0) if stitch_request else 1.0
+
         # Execute blocking pipeline in worker thread with live stage transition callback
         result = await asyncio.to_thread(
-            execute_pipeline, project_id, image_paths, OUTPUT_BASE_DIR, orchestrator_progress_callback
+            execute_pipeline,
+            project_id,
+            image_paths,
+            OUTPUT_BASE_DIR,
+            orchestrator_progress_callback,
+            detector,
+            blend,
+            downscale,
         )
 
         # Finalize on genuine completion

@@ -48,21 +48,61 @@ The stitching pipeline implements strict, catchable exception semantics for Memb
 
 ## ⏱️ Real Performance Profiling Benchmarks
 
-Benchmarked on a representative multi-frame flight batch from `shared/sample_images/` ($640 \times 448$ px per frame, 70% forward overlap):
+Benchmarked on genuine photographic aerial drone frames from `shared/sample_images/` ($960 \times 640$ px per frame, genuine forward overlap and agricultural surface texture):
 
-| Pipeline Stage | Total Duration | Per-Frame / Pair Metric |
-| :--- | :--- | :--- |
-| **Preprocessing** (EXIF transpose + CLAHE LAB) | `212.5 ms` | `70.8 ms / frame` |
-| **SIFT Feature Extraction** | `94.1 ms` | `31.4 ms / frame` (avg. 15–30 keypoints) |
-| **Feature Matching** (k-NN + Lowe's test) | `0.20 ms` | `0.20 ms / frame pair` |
-| **End-to-End Stitching** (Registration + Blending) | `4.98 s` | ~5.0 seconds for 3-frame strip |
-| **Output Image Specification** | Shape: `(640, 541, 3)` | Data type: `uint8` (BGR) |
+| Pipeline Stage | Total Duration | Per-Frame / Pair Metric | Observations |
+| :--- | :--- | :--- | :--- |
+| **Preprocessing** (EXIF transpose + CLAHE LAB) | `246.6 ms` | `82.2 ms / frame` | Normalized exposure & standardized orientations |
+| **SIFT Feature Extraction** | `181.5 ms` | `60.5 ms / frame` | **2,000 keypoints / frame** with scale-space octaves |
+| **Feature Matching** (k-NN + Lowe's + RANSAC) | `12.2 ms` | `12.2 ms / pair` | **594 good matches**, **553 RANSAC inliers** |
+| **End-to-End Stitching** (Registration + Blending) | `690.2 ms` | **0.69 s** for 3-frame strip | Robust planar homography alignment & multiband blend |
+| **Output Orthomosaic Composite** | Shape: `(677, 1599, 3)` | Data type: `uint8` (BGR) | Non-degenerate, seamless composite with full texture |
 
-### 🔒 Recommendation for Member 2's Concurrency Cap
-- OpenCV SIFT feature extraction, matching, and bundle adjustment are CPU-intensive operations that utilize multi-threaded OpenMP / TBB primitives.
-- Given an average pipeline latency of **~5 seconds per 3-frame flight batch**, Member 2 should configure the concurrency ceiling to:
-  $$\text{Concurrency Cap} = \max(1, \lfloor \text{CPU Cores} / 2 \rfloor)$$
-- For standard 4–8 core instances, **2 to 3 concurrent stitching workers** is the safe maximum to prevent CPU starvation, memory spikes, and watchdog timeouts on `POST /predict`.
+---
+
+## 🔍 Known Limitations & Architecture Roadmap (Item 4)
+
+1. **OpenCV Python Bindings for Feature Finder**:
+   - In standard OpenCV 4.x / 5.x Python bindings, `cv2.Stitcher.setFeaturesFinder` is not exposed in the C++ Python wrapper.
+   - `StitchRequest.feature_detector` is fully wired from the FastAPI schema through `execute_pipeline()` into `DroneStitcher(detector_type=...)` to stop the API from silently ignoring user parameters. However, calling `setFeaturesFinder` is safely guarded in a `try/except` block and will not alter `cv2.Stitcher`'s internal C++ defaults.
+2. **Path to Genuine Per-Request Feature Detector Switching**:
+   - To make `detector_type="ORB"` or custom feature detectors functionally effective at runtime, `DroneStitcher`'s registration path must be rebuilt using OpenCV's low-level `cv2.detail_*` API:
+     - `cv2.detail_computeImageFeatures2` (or `FeatureExtractor` from `opencv/features.py`)
+     - `cv2.detail_BestOf2NearestMatcher` (or `FeatureMatcher` from `opencv/matching.py`)
+     - `cv2.detail_HomographyBasedEstimator`
+     - `cv2.detail_BundleAdjusterRay`
+     - `cv2.detail_MultiBandBlender`
+   - Rebuilding on `cv2.detail_*` would also make `opencv/features.py` and `opencv/matching.py` directly load-bearing in the production path instead of standalone modules.
+   - **Guideline**: *Do not implement this rewrite speculatively — confirm with the team first as it represents a significant architectural overhaul of the registration engine.*
+
+---
+
+## 📌 Recommendations for Member 2 (Backend Orchestrator)
+
+### Item 5: Concurrency Cap Re-Check & Tuning
+- The original synthetic benchmarks (~5.0s) reflected degenerate corner cases on flat images. With real photographic images, 3 frames ($960 \times 640$) stitch in **~0.69 seconds**.
+- However, full production drone missions typically ingest batches of 20–60 full-resolution (4K / 12MP–24MP) flight frames. In that regime:
+  - Memory consumption scales with image dimensions and pyramid blend bands (~300MB–800MB peak RSS per worker).
+  - Multi-threaded SIFT and bundle adjustment saturate CPU cores via OpenMP.
+- **Tuned Recommendation**: Member 2 should maintain the concurrency ceiling:
+  $$\text{Concurrency Cap} = \max\left(1, \left\lfloor \frac{\text{CPU Cores}}{2} \right\rfloor\right)$$
+  - Standard 4-core worker: limit to **2 concurrent jobs**.
+  - 8-core worker: limit to **3–4 concurrent jobs**.
+  - Any additional concurrent requests should return `503 Service Unavailable` with `Server busy, try again in a moment` via `pipeline_concurrency_guard`.
+
+### Item 6: Diagnostic SSE Progress Events
+- When image stitching fails with `ERR_NEED_MORE_IMGS` (OpenCV status code 1), the API currently returns a generic `500 Internal Server Error` with `Pipeline failed at stage 'stitching'`.
+- **Recommended Enhancement**:
+  - In `opencv/stitching.py` or `opencv/matching.py`, count the pairwise extracted keypoints and surviving Lowe's ratio matches prior to alignment.
+  - Surface these diagnostic metrics in the SSE event payload emitted to the frontend:
+    ```json
+    {
+      "stage": "stitching",
+      "status": "error",
+      "message": "OpenCV stitching failed: Insufficient overlap between frame_02 and frame_03 (found 2000 keypoints each, but only 4 matching features — flight overlap is below recommended 60-70%)."
+    }
+    ```
+  - This provides drone operators with actionable flight guidance rather than an opaque server error.
 
 ---
 

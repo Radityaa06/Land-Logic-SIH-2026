@@ -35,7 +35,10 @@ def execute_pipeline(
     project_id: str,
     image_paths: List[str],
     outputs_base_dir: str,
-    progress_callback: Optional[Callable[[str, str, str, str], None]] = None
+    progress_callback: Optional[Callable[[str, str, str, str], None]] = None,
+    feature_detector: Optional[str] = "SIFT",
+    blend_mode: Optional[str] = "MULTIBAND",
+    downscale_factor: Optional[float] = 1.0,
 ) -> Dict[str, Any]:
     """
     Executes the modular pipeline across Members 4, 3, and 5:
@@ -63,10 +66,18 @@ def execute_pipeline(
 
     # Step 1: Member 4 — OpenCV Orthomosaic Stitching
     _emit("stitching", "started", f"OpenCV: Stitching {len(image_paths)} flight frames into composite orthomosaic")
-    logger.info(f"Invoking Member 4 (OpenCV) on {len(image_paths)} images...")
+    logger.info(f"Invoking Member 4 (OpenCV) on {len(image_paths)} images (detector={feature_detector})...")
     t0 = time.perf_counter()
     try:
-        stitcher = DroneStitcher()
+        # Note: detector_type can't currently force cv2.Stitcher's internal finder
+        # in standard OpenCV Python bindings (see opencv/README.md limitations).
+        # Threading detector_type, blend_mode, and downscale_factor stops the API from
+        # silently ignoring these fields from StitchRequest.
+        stitcher = DroneStitcher(
+            detector_type=feature_detector or "SIFT",
+            blend_mode=blend_mode or "MULTIBAND",
+            downscale_factor=downscale_factor or 1.0,
+        )
         stitcher.stitch_image_list(image_paths, stitched_img_path)
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log_request(request_id, "stitching", duration_ms, "success")

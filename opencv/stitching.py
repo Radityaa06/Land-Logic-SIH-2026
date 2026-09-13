@@ -27,8 +27,15 @@ class DroneStitcher:
     """
     Primary orthomosaic stitching engine for aerial drone image sets.
     """
-    def __init__(self, detector_type: str = "SIFT"):
-        self.detector_type = detector_type.upper()
+    def __init__(
+        self,
+        detector_type: str = "SIFT",
+        blend_mode: str = "MULTIBAND",
+        downscale_factor: float = 1.0
+    ):
+        self.detector_type = (detector_type or "SIFT").upper()
+        self.blend_mode = (blend_mode or "MULTIBAND").upper()
+        self.downscale_factor = float(downscale_factor) if downscale_factor else 1.0
         self.extractor = FeatureExtractor(detector_type=self.detector_type)
         self.matcher = FeatureMatcher(detector_type=self.detector_type)
 
@@ -51,6 +58,11 @@ class DroneStitcher:
         for p in image_paths:
             try:
                 img = load_and_preprocess_image(p)
+                if self.downscale_factor < 1.0 and cv2 is not None:
+                    # Apply downscaling if requested by StitchRequest to reduce memory footprint
+                    new_w = max(1, int(img.shape[1] * self.downscale_factor))
+                    new_h = max(1, int(img.shape[0] * self.downscale_factor))
+                    img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
                 images.append(img)
             except Exception as e:
                 raise ValueError(f"Failed to process image '{p}' for stitching: {str(e)}")

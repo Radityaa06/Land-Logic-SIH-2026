@@ -42,8 +42,8 @@ async def trigger_stitching(project_id: str, payload: StitchRequest, background_
     }
     JOBS_DB[job_id] = job_record
 
-    # Dispatch background orchestration task
-    background_tasks.add_task(run_full_pipeline, project_id, job_id, JOBS_DB)
+    # Dispatch background orchestration task with StitchRequest parameters
+    background_tasks.add_task(run_full_pipeline, project_id, job_id, JOBS_DB, payload)
 
     return job_record
 
